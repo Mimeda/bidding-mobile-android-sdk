@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "mimeda-android-sdk"
+rootProject.name = "bidding-mobile-android-sdk"
 include(":app")

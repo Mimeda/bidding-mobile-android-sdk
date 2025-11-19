@@ -30,7 +30,7 @@ dependencies {
 2. `settings.gradle.kts` dosyanıza ekleyin:
 ```kotlin
 include(":mimeda-sdk")
-project(":mimeda-sdk").projectDir = File("../mimeda-android-sdk/app")
+project(":mimeda-sdk").projectDir = File("../bidding-mobile-android-sdk/app")
 ```
 
 ## Kullanım

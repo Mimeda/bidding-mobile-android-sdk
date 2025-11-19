@@ -28,5 +28,5 @@ ve bu proje [Semantic Versioning](https://semver.org/lang/tr/) kullanır.
 - TECH.md - Teknik dokümantasyon
 - CHANGELOG.md - Versiyon geçmişi
 
-[1.0.0]: https://github.com/mimeda/mimeda-android-sdk/releases/tag/v1.0.0
+[1.0.0]: https://github.com/mimeda/bidding-mobile-android-sdk/releases/tag/v1.0.0
 
