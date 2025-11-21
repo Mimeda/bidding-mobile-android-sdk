@@ -17,7 +17,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Configuration values - gradle.properties'ten override edilebilir
-        val apiBaseUrl = project.findProperty("MIMEDA_API_BASE_URL") as String? ?: "https://api.mimeda.com"
+        val apiBaseUrl = project.findProperty("MIMEDA_API_BASE_URL") as String? ?: "https://event.mlink.com.tr"
         val connectTimeout = (project.findProperty("MIMEDA_CONNECT_TIMEOUT") as String?)?.toLongOrNull() ?: 10L
         val readTimeout = (project.findProperty("MIMEDA_READ_TIMEOUT") as String?)?.toLongOrNull() ?: 30L
         val writeTimeout = (project.findProperty("MIMEDA_WRITE_TIMEOUT") as String?)?.toLongOrNull() ?: 30L
@@ -50,17 +50,17 @@ android {
 
 dependencies {
     // Core Android
-    implementation(libs.androidx.core.ktx)
+    implementation("androidx.core:core-ktx:1.17.0")
     
     // HTTP Client
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging.interceptor)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     
     // JSON Parsing
-    implementation(libs.gson)
+    implementation("com.google.code.gson:gson:2.10.1")
     
     // Testing
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
 }
