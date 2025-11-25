@@ -3,7 +3,13 @@ package com.mimeda.sdk
 import android.content.Context
 import com.mimeda.sdk.api.ApiClient
 import com.mimeda.sdk.api.ApiService
+import com.mimeda.sdk.events.EventName
+import com.mimeda.sdk.events.EventParameter
+import com.mimeda.sdk.events.EventParams
 import com.mimeda.sdk.events.EventTracker
+import com.mimeda.sdk.events.EventType
+import com.mimeda.sdk.events.PerformanceEventParams
+import com.mimeda.sdk.utils.DeviceInfo
 import com.mimeda.sdk.utils.Logger
 
 /**
@@ -49,6 +55,9 @@ object MimedaSDK {
                 return
             }
 
+            // DeviceInfo'yu initialize et
+            DeviceInfo.initialize(context)
+
             val client = ApiClient.createClient(apiKey, appPackageName)
             val apiService = ApiService(client)
             eventTracker = EventTracker(apiService)
@@ -62,27 +71,75 @@ object MimedaSDK {
     }
 
     /**
-     * Event tracking yapar
-     * @param eventName Event adı
+     * Event tracking yapar (event.mlink.com.tr'ye gönderilir)
+     * @param eventName Event adı (enum)
+     * @param eventParameter Event parametresi (enum)
      * @param params Event parametreleri (opsiyonel)
      */
-    fun trackEvent(eventName: String, params: Map<String, Any> = emptyMap()) {
+    fun trackEvent(
+        eventName: EventName,
+        eventParameter: EventParameter,
+        params: EventParams = EventParams()
+    ) {
         try {
             if (!isInitialized) {
                 Logger.e("SDK not initialized. Call initialize() first.")
                 return
             }
 
-            if (eventName.isBlank()) {
-                Logger.e("Event name cannot be blank")
-                return
-            }
-
-            eventTracker?.track(eventName, params) ?: run {
+            eventTracker?.track(eventName, eventParameter, params, EventType.EVENT) ?: run {
                 Logger.e("EventTracker is null")
             }
         } catch (e: Exception) {
             Logger.e("Error in trackEvent", e)
+            // Exception ana uygulamaya yansıtılmaz
+        }
+    }
+
+    /**
+     * Performance impression event tracking yapar (performance.mlink.com.tr/impressions'ye gönderilir)
+     * Search sonucu ekrana gelen ve kullanıcının ekranına girmiş ürün başına bir impression eventi tetiklenir
+     * @param params Performance event parametreleri
+     */
+    fun trackPerformanceImpression(params: PerformanceEventParams) {
+        try {
+            if (!isInitialized) {
+                Logger.e("SDK not initialized. Call initialize() first.")
+                return
+            }
+
+            eventTracker?.trackPerformance(
+                com.mimeda.sdk.events.PerformanceEventType.IMPRESSION,
+                params
+            ) ?: run {
+                Logger.e("EventTracker is null")
+            }
+        } catch (e: Exception) {
+            Logger.e("Error in trackPerformanceImpression", e)
+            // Exception ana uygulamaya yansıtılmaz
+        }
+    }
+
+    /**
+     * Performance click event tracking yapar (performance.mlink.com.tr/clicks'ye gönderilir)
+     * Sponsorlu çerçevesine sahip ürünlere tıklandığında tetiklenen eventtir
+     * @param params Performance event parametreleri
+     */
+    fun trackPerformanceClick(params: PerformanceEventParams) {
+        try {
+            if (!isInitialized) {
+                Logger.e("SDK not initialized. Call initialize() first.")
+                return
+            }
+
+            eventTracker?.trackPerformance(
+                com.mimeda.sdk.events.PerformanceEventType.CLICK,
+                params
+            ) ?: run {
+                Logger.e("EventTracker is null")
+            }
+        } catch (e: Exception) {
+            Logger.e("Error in trackPerformanceClick", e)
             // Exception ana uygulamaya yansıtılmaz
         }
     }

@@ -17,13 +17,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Configuration values - gradle.properties'ten override edilebilir
-        val apiBaseUrl = project.findProperty("MIMEDA_API_BASE_URL") as String? ?: "https://event.mlink.com.tr"
+        val sdkVersion = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
+        val eventBaseUrl = project.findProperty("MIMEDA_EVENT_BASE_URL") as String? ?: "https://event.mlink.com.tr"
+        val performanceBaseUrl = project.findProperty("MIMEDA_PERFORMANCE_BASE_URL") as String? ?: "https://performance.mlink.com.tr"
         val connectTimeout = (project.findProperty("MIMEDA_CONNECT_TIMEOUT") as String?)?.toLongOrNull() ?: 10L
         val readTimeout = (project.findProperty("MIMEDA_READ_TIMEOUT") as String?)?.toLongOrNull() ?: 30L
         val writeTimeout = (project.findProperty("MIMEDA_WRITE_TIMEOUT") as String?)?.toLongOrNull() ?: 30L
         val enableDebugLogging = (project.findProperty("MIMEDA_DEBUG_LOGGING") as String?)?.toBoolean() ?: false
 
-        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+        // BuildConfig field'ları
+        buildConfigField("String", "SDK_VERSION", "\"$sdkVersion\"")
+        buildConfigField("String", "EVENT_BASE_URL", "\"$eventBaseUrl\"")
+        buildConfigField("String", "PERFORMANCE_BASE_URL", "\"$performanceBaseUrl\"")
         buildConfigField("long", "CONNECT_TIMEOUT_SECONDS", "${connectTimeout}L")
         buildConfigField("long", "READ_TIMEOUT_SECONDS", "${readTimeout}L")
         buildConfigField("long", "WRITE_TIMEOUT_SECONDS", "${writeTimeout}L")
@@ -31,12 +36,16 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Debug build type için BuildConfig field'ları defaultConfig'ten devralınır
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Release build type için BuildConfig field'ları defaultConfig'ten devralınır
         }
     }
     compileOptions {
