@@ -11,6 +11,8 @@ android {
         buildConfig = true
     }
 
+    flavorDimensions += "environment"
+
     defaultConfig {
         minSdk = 24
 
@@ -18,21 +20,37 @@ android {
 
         // Configuration values - gradle.properties'ten override edilebilir
         val sdkVersion = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
-        val eventBaseUrl = project.findProperty("MIMEDA_EVENT_BASE_URL") as String? ?: "https://event.mlink.com.tr"
-        val performanceBaseUrl = project.findProperty("MIMEDA_PERFORMANCE_BASE_URL") as String? ?: "https://performance.mlink.com.tr"
         val connectTimeout = (project.findProperty("MIMEDA_CONNECT_TIMEOUT") as String?)?.toLongOrNull() ?: 10L
         val readTimeout = (project.findProperty("MIMEDA_READ_TIMEOUT") as String?)?.toLongOrNull() ?: 30L
         val writeTimeout = (project.findProperty("MIMEDA_WRITE_TIMEOUT") as String?)?.toLongOrNull() ?: 30L
         val enableDebugLogging = (project.findProperty("MIMEDA_DEBUG_LOGGING") as String?)?.toBoolean() ?: false
 
-        // BuildConfig field'ları
+        // BuildConfig field'ları (URL'ler productFlavors'da tanımlı)
         buildConfigField("String", "SDK_VERSION", "\"$sdkVersion\"")
-        buildConfigField("String", "EVENT_BASE_URL", "\"$eventBaseUrl\"")
-        buildConfigField("String", "PERFORMANCE_BASE_URL", "\"$performanceBaseUrl\"")
         buildConfigField("long", "CONNECT_TIMEOUT_SECONDS", "${connectTimeout}L")
         buildConfigField("long", "READ_TIMEOUT_SECONDS", "${readTimeout}L")
         buildConfigField("long", "WRITE_TIMEOUT_SECONDS", "${writeTimeout}L")
         buildConfigField("boolean", "DEBUG_LOGGING", if (enableDebugLogging) "true" else "false")
+    }
+
+    productFlavors {
+        create("production") {
+            dimension = "environment"
+            // Her build'de her iki environment URL'i de mevcut olmalı (runtime seçimi için)
+            buildConfigField("String", "PRODUCTION_EVENT_BASE_URL", "\"https://event.mlink.com.tr\"")
+            buildConfigField("String", "PRODUCTION_PERFORMANCE_BASE_URL", "\"https://performance.mlink.com.tr\"")
+            buildConfigField("String", "STAGING_EVENT_BASE_URL", "\"https://bidding-eventcollector-stage.azurewebsites.net\"")
+            buildConfigField("String", "STAGING_PERFORMANCE_BASE_URL", "\"https://bidding-prfmnccollector-stage.azurewebsites.net\"")
+        }
+
+        create("staging") {
+            dimension = "environment"
+            // Her build'de her iki environment URL'i de mevcut olmalı (runtime seçimi için)
+            buildConfigField("String", "PRODUCTION_EVENT_BASE_URL", "\"https://event.mlink.com.tr\"")
+            buildConfigField("String", "PRODUCTION_PERFORMANCE_BASE_URL", "\"https://performance.mlink.com.tr\"")
+            buildConfigField("String", "STAGING_EVENT_BASE_URL", "\"https://bidding-eventcollector-stage.azurewebsites.net\"")
+            buildConfigField("String", "STAGING_PERFORMANCE_BASE_URL", "\"https://bidding-prfmnccollector-stage.azurewebsites.net\"")
+        }
     }
 
     buildTypes {

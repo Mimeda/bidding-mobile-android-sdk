@@ -14,12 +14,10 @@ sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 # ============================================
 # Bu dosyayı local.properties olarak kopyalayın ve değerleri düzenleyin
 # local.properties git'e eklenmez (güvenlik için)
-
-# API Base URLs (opsiyonel - varsayılanlar: https://event.mlink.com.tr ve https://performance.mlink.com.tr)
-# Event tracking için base URL
-# MIMEDA_EVENT_BASE_URL=https://api-staging.mimeda.com
-# Performance tracking için base URL
-# MIMEDA_PERFORMANCE_BASE_URL=https://performance-staging.mimeda.com
+#
+# NOT: API Base URL'ler artık Product Flavors ile yönetiliyor.
+# Environment seçmek için Android Studio'da Build Variants panelinden
+# production veya staging variant'ını seçin.
 
 # Timeout değerleri (saniye cinsinden)
 # MIMEDA_CONNECT_TIMEOUT=15

@@ -1,5 +1,6 @@
 package com.mimeda.sdk.api
 
+import com.mimeda.sdk.Environment
 import com.mimeda.sdk.events.EventName
 import com.mimeda.sdk.events.EventParameter
 import com.mimeda.sdk.events.EventParams
@@ -16,10 +17,22 @@ import java.util.UUID
  * API Service - HTTP isteklerini yönetir
  * Event tracking için API endpoint'lerine query parametreli GET isteği gönderir
  */
-internal class ApiService(private val client: okhttp3.OkHttpClient) {
-    private val eventBaseUrl = com.mimeda.sdk.BuildConfig.EVENT_BASE_URL
-    private val performanceBaseUrl = com.mimeda.sdk.BuildConfig.PERFORMANCE_BASE_URL
+internal class ApiService(
+    private val client: okhttp3.OkHttpClient,
+    private val environment: Environment
+) {
     private val sdkVersion = com.mimeda.sdk.BuildConfig.SDK_VERSION
+    
+    // Environment'a göre URL'leri seç
+    private val eventBaseUrl: String = when (environment) {
+        Environment.PRODUCTION -> com.mimeda.sdk.BuildConfig.PRODUCTION_EVENT_BASE_URL
+        Environment.STAGING -> com.mimeda.sdk.BuildConfig.STAGING_EVENT_BASE_URL
+    }
+    
+    private val performanceBaseUrl: String = when (environment) {
+        Environment.PRODUCTION -> com.mimeda.sdk.BuildConfig.PRODUCTION_PERFORMANCE_BASE_URL
+        Environment.STAGING -> com.mimeda.sdk.BuildConfig.STAGING_PERFORMANCE_BASE_URL
+    }
     
     /**
      * Event tipine göre doğru base URL'yi döndürür

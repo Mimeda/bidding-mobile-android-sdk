@@ -18,7 +18,7 @@ import com.mimeda.sdk.utils.Logger
  * 
  * Kullanım:
  * ```
- * MimedaSDK.initialize(context, "your-api-key")
+ * MimedaSDK.initialize(context, "your-api-key", Environment.PRODUCTION)
  * MimedaSDK.trackEvent("button_clicked", mapOf("button_id" to "login"))
  * ```
  * 
@@ -32,11 +32,17 @@ object MimedaSDK {
      * SDK'yı başlatır
      * @param context Android Context
      * @param apiKey API anahtarı
+     * @param environment Environment seçimi (PRODUCTION veya STAGING), varsayılan: PRODUCTION
      * 
      * Package name otomatik olarak context.packageName'den alınır.
      * Geliştirici tarafından verilmez.
      */
-    fun initialize(context: Context, apiKey: String) {
+    @JvmOverloads
+    fun initialize(
+        context: Context,
+        apiKey: String,
+        environment: Environment = Environment.PRODUCTION
+    ) {
         try {
             if (isInitialized) {
                 Logger.d("SDK already initialized")
@@ -59,11 +65,11 @@ object MimedaSDK {
             DeviceInfo.initialize(context)
 
             val client = ApiClient.createClient(apiKey, appPackageName)
-            val apiService = ApiService(client)
+            val apiService = ApiService(client, environment)
             eventTracker = EventTracker(apiService)
 
             isInitialized = true
-            Logger.d("MimedaSDK initialized successfully with package: $appPackageName")
+            Logger.d("MimedaSDK initialized successfully with package: $appPackageName, environment: $environment")
         } catch (e: Exception) {
             Logger.e("Error initializing MimedaSDK", e)
             // Exception ana uygulamaya yansıtılmaz
