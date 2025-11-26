@@ -27,7 +27,7 @@ internal object DeviceInfo {
             // App name - Package name kullan
             appName = context.packageName
         } catch (e: Exception) {
-            Logger.e("Error initializing DeviceInfo", e)
+            Logger.e("Failed to initialize DeviceInfo", e)
             // Fallback değerler
             deviceId = UUID.randomUUID().toString()
             appName = "unknown"

@@ -51,12 +51,12 @@ internal class EventTracker(private val apiService: ApiService) {
                     )
                 } catch (e: Exception) {
                     // Tüm exception'lar burada yakalanır
-                    Logger.e("Error in event tracker thread", e)
+                    Logger.e("An error occurred in event tracker thread", e)
                 }
             }
         } catch (e: Exception) {
             // Executor exception'ı bile yakalanır
-            Logger.e("Error submitting event to executor", e)
+            Logger.e("Failed to submit event to executor", e)
         }
     }
     
@@ -89,12 +89,12 @@ internal class EventTracker(private val apiService: ApiService) {
                     )
                 } catch (e: Exception) {
                     // Tüm exception'lar burada yakalanır
-                    Logger.e("Error in performance event tracker thread", e)
+                    Logger.e("An error occurred in performance event tracker thread", e)
                 }
             }
         } catch (e: Exception) {
             // Executor exception'ı bile yakalanır
-            Logger.e("Error submitting performance event to executor", e)
+            Logger.e("Failed to submit performance event to executor", e)
         }
     }
 
@@ -105,7 +105,7 @@ internal class EventTracker(private val apiService: ApiService) {
         try {
             executor.shutdown()
         } catch (e: Exception) {
-            Logger.e("Error shutting down executor", e)
+            Logger.e("An error occurred while shutting down executor", e)
         }
     }
 }

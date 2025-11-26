@@ -145,34 +145,22 @@ internal class ApiService(
                 .get()
                 .build()
 
-            // REQUEST LOG
-            Logger.d("📤 REQUEST → URL: $url")
-            Logger.d("📤 REQUEST → Method: ${request.method}")
-            Logger.d("📤 REQUEST → Event: ${eventName.value} / ${eventParameter.value}")
-            Logger.d("📤 REQUEST → Query Params: $queryParams")
-
             val response = client.newCall(request).execute()
-
-            // RESPONSE LOG - Body'yi okumadan önce peek kullan (body tüketilmez)
-            val responseBodyPreview = response.peekBody(1024).string() // İlk 1KB'ı oku
-            Logger.d("📥 RESPONSE → Status: ${response.code} ${response.message}")
-            Logger.d("📥 RESPONSE → Headers: ${response.headers}")
-            Logger.d("📥 RESPONSE → Body: $responseBodyPreview")
 
             val isSuccess = response.isSuccessful
             if (isSuccess) {
-                Logger.d("✅ Event tracked successfully: ${eventName.value}/${eventParameter.value} (Status: ${response.code})")
+                Logger.s("Event tracked successfully. Event: ${eventName.value}/${eventParameter.value}, Status: ${response.code}")
             } else {
-                Logger.e("❌ Event tracking failed: ${eventName.value}/${eventParameter.value} (Status: ${response.code} - ${response.message})")
+                Logger.e("Event tracking failed. Event: ${eventName.value}/${eventParameter.value}, Status: ${response.code}, Message: ${response.message}")
             }
 
             response.close()
             isSuccess
         } catch (e: IOException) {
-            Logger.e("🌐 Network error while tracking event: ${eventName.value}/${eventParameter.value}", e)
+            Logger.e("Network error occurred while tracking event: ${eventName.value}/${eventParameter.value}", e)
             false
         } catch (e: Exception) {
-            Logger.e("⚠️ Unexpected error while tracking event: ${eventName.value}/${eventParameter.value}", e)
+            Logger.e("An unexpected error occurred while tracking event: ${eventName.value}/${eventParameter.value}", e)
             false
         }
     }
@@ -205,13 +193,13 @@ internal class ApiService(
         // Opsiyonel parametreler
         params.keyword?.let { queryParams["kw"] = it }
 
-        params.anonymousId?.let { queryParams["aid"] = it } ?:  ""
+        params.anonymousId?.let { queryParams["aid"] = it }
 
-        params.userId?.let { queryParams["uid"] = it } ?:  ""
+        params.userId?.let { queryParams["uid"] = it }
 
         params.sessionId?.let { queryParams["s"] = it } ?: sessionId?.let { queryParams["s"] = it }
 
-        browser?.let { queryParams["br"] = it } ?: ""
+        browser?.let { queryParams["br"] = it }
         
         return queryParams
     }
@@ -269,34 +257,22 @@ internal class ApiService(
                 .get()
                 .build()
 
-            // REQUEST LOG
-            Logger.d("📤 PERFORMANCE REQUEST → URL: $url")
-            Logger.d("📤 PERFORMANCE REQUEST → Method: ${request.method}")
-            Logger.d("📤 PERFORMANCE REQUEST → Event Type: $eventType")
-            Logger.d("📤 PERFORMANCE REQUEST → Query Params: $queryParams")
-
             val response = client.newCall(request).execute()
-
-            // RESPONSE LOG - Body'yi okumadan önce peek kullan (body tüketilmez)
-            val responseBodyPreview = response.peekBody(1024).string() // İlk 1KB'ı oku
-            Logger.d("📥 PERFORMANCE RESPONSE → Status: ${response.code} ${response.message}")
-            Logger.d("📥 PERFORMANCE RESPONSE → Headers: ${response.headers}")
-            Logger.d("📥 PERFORMANCE RESPONSE → Body: $responseBodyPreview")
 
             val isSuccess = response.isSuccessful
             if (isSuccess) {
-                Logger.d("✅ Performance event tracked successfully: $eventType (Status: ${response.code})")
+                Logger.s("Performance event tracked successfully. Event Type: $eventType, Status: ${response.code}")
             } else {
-                Logger.e("❌ Performance event tracking failed: $eventType (Status: ${response.code} - ${response.message})")
+                Logger.e("Performance event tracking failed. Event Type: $eventType, Status: ${response.code}, Message: ${response.message}")
             }
 
             response.close()
             isSuccess
         } catch (e: IOException) {
-            Logger.e("🌐 Network error while tracking performance event: $eventType", e)
+            Logger.e("Network error occurred while tracking performance event: $eventType", e)
             false
         } catch (e: Exception) {
-            Logger.e("⚠️ Unexpected error while tracking performance event: $eventType", e)
+            Logger.e("An unexpected error occurred while tracking performance event: $eventType", e)
             false
         }
     }

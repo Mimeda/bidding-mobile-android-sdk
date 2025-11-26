@@ -45,19 +45,18 @@ object MimedaSDK {
     ) {
         try {
             if (isInitialized) {
-                Logger.d("SDK already initialized")
                 return
             }
 
             if (apiKey.isBlank()) {
-                Logger.e("API key cannot be blank")
+                Logger.e("API key is required but was not provided")
                 return
             }
 
             // Package name'i otomatik olarak context'ten al
             val appPackageName = context.packageName
             if (appPackageName.isBlank()) {
-                Logger.e("Package name cannot be blank")
+                Logger.e("Package name is required but could not be retrieved from context")
                 return
             }
 
@@ -69,9 +68,9 @@ object MimedaSDK {
             eventTracker = EventTracker(apiService)
 
             isInitialized = true
-            Logger.d("MimedaSDK initialized successfully with package: $appPackageName, environment: $environment")
+            Logger.s("MimedaSDK initialized successfully. Package: $appPackageName, Environment: $environment")
         } catch (e: Exception) {
-            Logger.e("Error initializing MimedaSDK", e)
+            Logger.e("Failed to initialize MimedaSDK", e)
             // Exception ana uygulamaya yansıtılmaz
         }
     }
@@ -89,15 +88,15 @@ object MimedaSDK {
     ) {
         try {
             if (!isInitialized) {
-                Logger.e("SDK not initialized. Call initialize() first.")
+                Logger.e("SDK is not initialized. Call initialize() before tracking events")
                 return
             }
 
             eventTracker?.track(eventName, eventParameter, params, EventType.EVENT) ?: run {
-                Logger.e("EventTracker is null")
+                Logger.e("EventTracker is not available")
             }
         } catch (e: Exception) {
-            Logger.e("Error in trackEvent", e)
+            Logger.e("An error occurred while tracking event", e)
             // Exception ana uygulamaya yansıtılmaz
         }
     }
@@ -110,7 +109,7 @@ object MimedaSDK {
     fun trackPerformanceImpression(params: PerformanceEventParams) {
         try {
             if (!isInitialized) {
-                Logger.e("SDK not initialized. Call initialize() first.")
+                Logger.e("SDK is not initialized. Call initialize() before tracking events")
                 return
             }
 
@@ -118,10 +117,10 @@ object MimedaSDK {
                 com.mimeda.sdk.events.PerformanceEventType.IMPRESSION,
                 params
             ) ?: run {
-                Logger.e("EventTracker is null")
+                Logger.e("EventTracker is not available")
             }
         } catch (e: Exception) {
-            Logger.e("Error in trackPerformanceImpression", e)
+            Logger.e("An error occurred while tracking performance impression event", e)
             // Exception ana uygulamaya yansıtılmaz
         }
     }
@@ -134,7 +133,7 @@ object MimedaSDK {
     fun trackPerformanceClick(params: PerformanceEventParams) {
         try {
             if (!isInitialized) {
-                Logger.e("SDK not initialized. Call initialize() first.")
+                Logger.e("SDK is not initialized. Call initialize() before tracking events")
                 return
             }
 
@@ -142,10 +141,10 @@ object MimedaSDK {
                 com.mimeda.sdk.events.PerformanceEventType.CLICK,
                 params
             ) ?: run {
-                Logger.e("EventTracker is null")
+                Logger.e("EventTracker is not available")
             }
         } catch (e: Exception) {
-            Logger.e("Error in trackPerformanceClick", e)
+            Logger.e("An error occurred while tracking performance click event", e)
             // Exception ana uygulamaya yansıtılmaz
         }
     }
@@ -169,9 +168,8 @@ object MimedaSDK {
             eventTracker?.shutdown()
             eventTracker = null
             isInitialized = false
-            Logger.d("MimedaSDK shutdown completed")
         } catch (e: Exception) {
-            Logger.e("Error shutting down MimedaSDK", e)
+            Logger.e("An error occurred while shutting down MimedaSDK", e)
             // Exception ana uygulamaya yansıtılmaz
         }
     }

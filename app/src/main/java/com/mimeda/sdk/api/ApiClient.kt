@@ -47,7 +47,7 @@ internal object ApiClient {
                 .addInterceptor(loggingInterceptor)
                 .build()
         } catch (e: Exception) {
-            Logger.e("Error creating OkHttpClient", e)
+            Logger.e("Failed to create OkHttpClient", e)
             // Fallback: Basit bir client döndür
             OkHttpClient()
         }
