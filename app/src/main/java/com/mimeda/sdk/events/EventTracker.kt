@@ -39,7 +39,8 @@ internal class EventTracker(
             
             // Session yoksa veya 30 dakika geçmişse yeni session oluştur
             if (savedSessionId == null || (currentTime - savedTimestamp) > SESSION_DURATION_MS) {
-                val newSessionId = System.currentTimeMillis().toString()
+
+                val newSessionId = java.util.UUID.randomUUID().toString()
                 prefs.edit()
                     .putString(KEY_SESSION_ID, newSessionId)
                     .putLong(KEY_SESSION_TIMESTAMP, currentTime)
@@ -51,7 +52,7 @@ internal class EventTracker(
         } catch (e: Exception) {
             // Hata durumunda fallback olarak memory'de sessionId oluştur
             Logger.e("Failed to get or create session ID from SharedPreferences", e)
-            System.currentTimeMillis().toString()
+            java.util.UUID.randomUUID().toString()
         }
     }
 
