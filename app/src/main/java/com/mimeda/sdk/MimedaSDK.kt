@@ -65,7 +65,9 @@ object MimedaSDK {
 
             val client = ApiClient.createClient(apiKey, appPackageName)
             val apiService = ApiService(client, environment)
-            eventTracker = EventTracker(apiService)
+            // ApplicationContext kullanarak memory leak önlenir
+            val applicationContext = context.applicationContext
+            eventTracker = EventTracker(apiService, applicationContext)
 
             isInitialized = true
             Logger.s("MimedaSDK initialized successfully. Package: $appPackageName, Environment: $environment")

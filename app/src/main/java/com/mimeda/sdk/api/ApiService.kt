@@ -78,7 +78,7 @@ internal class ApiService(
         params.userId?.let { queryParams["uid"] = it }
         params.lineItemIds?.let { queryParams["li"] = it }
         params.productList?.let { queryParams["pl"] = it }
-        params.sessionId?.let { queryParams["s"] = it } ?: sessionId?.let { queryParams["s"] = it }
+        sessionId?.let { queryParams["s"] = it }
         params.categoryId?.let { queryParams["ct"] = it }
         params.keyword?.let { queryParams["kw"] = it }
         params.loyaltyCard?.let { queryParams["lc"] = it }
@@ -197,7 +197,7 @@ internal class ApiService(
 
         params.userId?.let { queryParams["uid"] = it }
 
-        params.sessionId?.let { queryParams["s"] = it } ?: sessionId?.let { queryParams["s"] = it }
+        sessionId?.let { queryParams["s"] = it }
 
         browser?.let { queryParams["br"] = it }
         

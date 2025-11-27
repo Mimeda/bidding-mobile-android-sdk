@@ -61,11 +61,6 @@ data class EventParams(
     val productList: String? = null,
     
     /**
-     * Session ID (s)
-     */
-    val sessionId: String? = null,
-    
-    /**
      * Category ID (ct)
      */
     val categoryId: String? = null,

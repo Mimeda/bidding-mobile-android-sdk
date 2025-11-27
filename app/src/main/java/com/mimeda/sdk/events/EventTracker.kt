@@ -1,5 +1,6 @@
 package com.mimeda.sdk.events
 
+import android.content.Context
 import com.mimeda.sdk.api.ApiService
 import com.mimeda.sdk.events.PerformanceEventParams
 import com.mimeda.sdk.events.PerformanceEventType
@@ -11,9 +12,48 @@ import java.util.concurrent.Executors
  * Event Tracker - Event'leri background thread'de API'ye gönderir
  * Tüm hatalar yakalanır ve ana uygulamaya yansıtılmaz
  */
-internal class EventTracker(private val apiService: ApiService) {
+internal class EventTracker(
+    private val apiService: ApiService,
+    private val context: Context
+) {
     private val executor = Executors.newSingleThreadExecutor()
-    private var sessionId: String? = null
+    
+    companion object {
+        private const val SESSION_DURATION_MS = 30 * 60 * 1000L // 30 dakika
+        private const val PREFS_NAME = "mimeda_sdk_session"
+        private const val KEY_SESSION_ID = "session_id"
+        private const val KEY_SESSION_TIMESTAMP = "session_timestamp"
+    }
+
+    /**
+     * Session ID'yi SharedPreferences'ten alır veya yeni oluşturur
+     * 30 dakika geçmişse yeni session oluşturulur
+     * @return Session ID string
+     */
+    private fun getOrCreateSessionId(): String {
+        return try {
+            val currentTime = System.currentTimeMillis()
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val savedSessionId = prefs.getString(KEY_SESSION_ID, null)
+            val savedTimestamp = prefs.getLong(KEY_SESSION_TIMESTAMP, 0L)
+            
+            // Session yoksa veya 30 dakika geçmişse yeni session oluştur
+            if (savedSessionId == null || (currentTime - savedTimestamp) > SESSION_DURATION_MS) {
+                val newSessionId = System.currentTimeMillis().toString()
+                prefs.edit()
+                    .putString(KEY_SESSION_ID, newSessionId)
+                    .putLong(KEY_SESSION_TIMESTAMP, currentTime)
+                    .apply()
+                newSessionId
+            } else {
+                savedSessionId
+            }
+        } catch (e: Exception) {
+            // Hata durumunda fallback olarak memory'de sessionId oluştur
+            Logger.e("Failed to get or create session ID from SharedPreferences", e)
+            System.currentTimeMillis().toString()
+        }
+    }
 
     /**
      * Event'i background thread'de API'ye gönderir
@@ -31,10 +71,8 @@ internal class EventTracker(private val apiService: ApiService) {
         try {
             executor.execute {
                 try {
-                    // Session ID'yi ilk event'te oluştur ve sakla
-                    if (sessionId == null) {
-                        sessionId = System.currentTimeMillis().toString()
-                    }
+                    // Session ID'yi SharedPreferences'ten al veya oluştur
+                    val sessionId = getOrCreateSessionId()
                     
                     apiService.trackEvent(
                         eventName = eventName,
@@ -46,7 +84,7 @@ internal class EventTracker(private val apiService: ApiService) {
                         os = DeviceInfo.getOs(),
                         language = DeviceInfo.getLanguage(),
                         browser = DeviceInfo.getBrowser(),
-                        sessionId = params.sessionId ?: sessionId,
+                        sessionId = sessionId,
                         traceId = params.traceId ?: java.util.UUID.randomUUID().toString()
                     )
                 } catch (e: Exception) {
@@ -72,10 +110,8 @@ internal class EventTracker(private val apiService: ApiService) {
         try {
             executor.execute {
                 try {
-                    // Session ID'yi ilk event'te oluştur ve sakla
-                    if (sessionId == null) {
-                        sessionId = System.currentTimeMillis().toString()
-                    }
+                    // Session ID'yi SharedPreferences'ten al veya oluştur
+                    val sessionId = getOrCreateSessionId()
                     
                     apiService.trackPerformanceEvent(
                         eventType = eventType,
@@ -84,7 +120,7 @@ internal class EventTracker(private val apiService: ApiService) {
                         deviceId = DeviceInfo.getDeviceId(),
                         os = DeviceInfo.getOs(),
                         browser = DeviceInfo.getBrowser(),
-                        sessionId = params.sessionId ?: sessionId,
+                        sessionId = sessionId,
                         traceId = params.traceId ?: java.util.UUID.randomUUID().toString()
                     )
                 } catch (e: Exception) {
