@@ -84,9 +84,7 @@ internal class EventTracker(
                         deviceId = DeviceInfo.getDeviceId(),
                         os = DeviceInfo.getOs(),
                         language = DeviceInfo.getLanguage(),
-                        browser = DeviceInfo.getBrowser(),
-                        sessionId = sessionId,
-                        traceId = params.traceId ?: java.util.UUID.randomUUID().toString()
+                        sessionId = sessionId
                     )
                 } catch (e: Exception) {
                     // Tüm exception'lar burada yakalanır
@@ -120,9 +118,8 @@ internal class EventTracker(
                         appName = DeviceInfo.getAppName(),
                         deviceId = DeviceInfo.getDeviceId(),
                         os = DeviceInfo.getOs(),
-                        browser = DeviceInfo.getBrowser(),
-                        sessionId = sessionId,
-                        traceId = params.traceId ?: java.util.UUID.randomUUID().toString()
+                        language = DeviceInfo.getLanguage(),
+                        sessionId = sessionId
                     )
                 } catch (e: Exception) {
                     // Tüm exception'lar burada yakalanır

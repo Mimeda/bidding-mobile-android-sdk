@@ -48,11 +48,6 @@ data class PerformanceEventParams(
     /**
      * Timestamp (t) - Opsiyonel (otomatik doldurulur)
      */
-    val timestamp: Long? = null,
-    
-    /**
-     * Trace ID (tid) - Opsiyonel (otomatik doldurulur)
-     */
-    val traceId: String? = null
+    val timestamp: Long? = null
 )
 

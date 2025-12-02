@@ -83,11 +83,6 @@ data class EventParams(
     /**
      * Total Row Count (trc)
      */
-    val totalRowCount: Int? = null,
-    
-    /**
-     * Trace ID (tid) - Unique trace identifier
-     */
-    val traceId: String? = null
+    val totalRowCount: Int? = null
 )
 
