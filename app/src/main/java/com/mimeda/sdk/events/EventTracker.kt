@@ -23,6 +23,7 @@ internal class EventTracker(
         private const val PREFS_NAME = "mimeda_sdk_session"
         private const val KEY_SESSION_ID = "session_id"
         private const val KEY_SESSION_TIMESTAMP = "session_timestamp"
+        private const val KEY_ANONYMOUS_ID = "anonymous_id"
     }
 
     /**
@@ -57,6 +58,33 @@ internal class EventTracker(
     }
 
     /**
+     * Anonymous ID'yi SharedPreferences'ten alır veya yeni oluşturur
+     * App silinene kadar aynı anonymousId kalır, app silinip yeniden yüklenirse yenilenir
+     * @return Anonymous ID string
+     */
+    private fun getOrCreateAnonymousId(): String {
+        return try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val savedAnonymousId = prefs.getString(KEY_ANONYMOUS_ID, null)
+            
+            // AnonymousId yoksa yeni oluştur
+            if (savedAnonymousId == null) {
+                val newAnonymousId = java.util.UUID.randomUUID().toString()
+                prefs.edit()
+                    .putString(KEY_ANONYMOUS_ID, newAnonymousId)
+                    .apply()
+                newAnonymousId
+            } else {
+                savedAnonymousId
+            }
+        } catch (e: Exception) {
+            // Hata durumunda fallback olarak memory'de anonymousId oluştur
+            Logger.e("Failed to get or create anonymous ID from SharedPreferences", e)
+            java.util.UUID.randomUUID().toString()
+        }
+    }
+
+    /**
      * Event'i background thread'de API'ye gönderir
      * @param eventName Event adı
      * @param eventParameter Event parametresi
@@ -74,6 +102,8 @@ internal class EventTracker(
                 try {
                     // Session ID'yi SharedPreferences'ten al veya oluştur
                     val sessionId = getOrCreateSessionId()
+                    // Anonymous ID'yi SharedPreferences'ten al veya oluştur
+                    val anonymousId = getOrCreateAnonymousId()
                     
                     apiService.trackEvent(
                         eventName = eventName,
@@ -84,7 +114,8 @@ internal class EventTracker(
                         deviceId = DeviceInfo.getDeviceId(),
                         os = DeviceInfo.getOs(),
                         language = DeviceInfo.getLanguage(),
-                        sessionId = sessionId
+                        sessionId = sessionId,
+                        anonymousId = anonymousId
                     )
                 } catch (e: Exception) {
                     // Tüm exception'lar burada yakalanır
@@ -111,6 +142,8 @@ internal class EventTracker(
                 try {
                     // Session ID'yi SharedPreferences'ten al veya oluştur
                     val sessionId = getOrCreateSessionId()
+                    // Anonymous ID'yi SharedPreferences'ten al veya oluştur
+                    val anonymousId = getOrCreateAnonymousId()
                     
                     apiService.trackPerformanceEvent(
                         eventType = eventType,
@@ -119,7 +152,8 @@ internal class EventTracker(
                         deviceId = DeviceInfo.getDeviceId(),
                         os = DeviceInfo.getOs(),
                         language = DeviceInfo.getLanguage(),
-                        sessionId = sessionId
+                        sessionId = sessionId,
+                        anonymousId = anonymousId
                     )
                 } catch (e: Exception) {
                     // Tüm exception'lar burada yakalanır

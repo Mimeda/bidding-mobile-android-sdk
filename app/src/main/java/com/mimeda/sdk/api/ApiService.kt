@@ -63,7 +63,8 @@ internal class ApiService(
         deviceId: String,
         os: String,
         language: String,
-        sessionId: String?
+        sessionId: String?,
+        anonymousId: String?
     ): ValidationResult {
         val errors = mutableListOf<String>()
         
@@ -74,7 +75,7 @@ internal class ApiService(
         if (os.isBlank()) errors.add("os (Os) is required")
         if (language.isBlank()) errors.add("lng (Language) is required")
         if (sessionId.isNullOrBlank()) errors.add("s (SessionId) is required")
-        if (params.anonymousId.isNullOrBlank()) errors.add("aid (AnonymousId) is required")
+        if (anonymousId.isNullOrBlank()) errors.add("aid (AnonymousId) is required")
         if (eventName.value.isBlank()) errors.add("en (EventName) is required")
         if (eventParameter.value.isBlank()) errors.add("ep (EventParameter) is required")
         
@@ -94,7 +95,8 @@ internal class ApiService(
         deviceId: String,
         os: String,
         language: String,
-        sessionId: String?
+        sessionId: String?,
+        anonymousId: String?
     ): ValidationResult {
         val errors = mutableListOf<String>()
         
@@ -105,7 +107,7 @@ internal class ApiService(
         if (os.isBlank()) errors.add("os (Os) is required")
         if (language.isBlank()) errors.add("lng (Language) is required")
         if (sessionId.isNullOrBlank()) errors.add("s (SessionId) is required")
-        if (params.anonymousId.isNullOrBlank()) errors.add("aid (AnonymousId) is required")
+        if (anonymousId.isNullOrBlank()) errors.add("aid (AnonymousId) is required")
         if (params.lineItemId.isBlank()) errors.add("li (LineItemId) is required")
         if (params.creativeId.isBlank()) errors.add("c (CreativeId) is required")
         if (params.adUnit.isBlank()) errors.add("au (AdUnit) is required")
@@ -130,7 +132,8 @@ internal class ApiService(
         deviceId: String,
         os: String,
         language: String,
-        sessionId: String?
+        sessionId: String?,
+        anonymousId: String?
     ): Map<String, String> {
         val queryParams = mutableMapOf<String, String>()
         
@@ -149,7 +152,8 @@ internal class ApiService(
         queryParams["tid"] = traceId
         
         // Opsiyonel parametreler
-        params.anonymousId?.let { queryParams["aid"] = it }
+        // anonymousId önce params'tan kontrol et (geriye dönük uyumluluk için), yoksa otomatik üretileni kullan
+        (params.anonymousId ?: anonymousId)?.let { queryParams["aid"] = it }
         params.userId?.let { queryParams["uid"] = it }
         params.lineItemIds?.let { queryParams["li"] = it }
         params.productList?.let { queryParams["pl"] = it }
@@ -190,6 +194,7 @@ internal class ApiService(
      * @param os İşletim sistemi
      * @param language Dil
      * @param sessionId Session ID
+     * @param anonymousId Anonymous ID (SDK tarafından otomatik üretilir)
      * @return Başarılı olursa true, aksi halde false (exception fırlatmaz)
      */
     fun trackEvent(
@@ -201,13 +206,14 @@ internal class ApiService(
         deviceId: String,
         os: String,
         language: String,
-        sessionId: String?
+        sessionId: String?,
+        anonymousId: String?
     ): Boolean {
         return try {
             // Validasyon kontrolü
             val validationResult = validateEventParams(
                 eventName, eventParameter, params,
-                appName, deviceId, os, language, sessionId
+                appName, deviceId, os, language, sessionId, anonymousId
             )
             
             if (validationResult is ValidationResult.Failure) {
@@ -219,7 +225,7 @@ internal class ApiService(
             val baseUrl = getBaseUrl(eventType)
             val queryParams = buildQueryParams(
                 eventName, eventParameter, params,
-                appName, deviceId, os, language, sessionId
+                appName, deviceId, os, language, sessionId, anonymousId
             )
             val url = buildUrl(baseUrl, queryParams)
 
@@ -257,7 +263,8 @@ internal class ApiService(
         deviceId: String,
         os: String,
         language: String,
-        sessionId: String?
+        sessionId: String?,
+        anonymousId: String?
     ): Map<String, String> {
         val queryParams = mutableMapOf<String, String>()
         
@@ -280,7 +287,8 @@ internal class ApiService(
         
         // Opsiyonel parametreler
         params.keyword?.let { queryParams["kw"] = it }
-        params.anonymousId?.let { queryParams["aid"] = it }
+        // anonymousId önce params'tan kontrol et (geriye dönük uyumluluk için), yoksa otomatik üretileni kullan
+        (params.anonymousId ?: anonymousId)?.let { queryParams["aid"] = it }
         params.userId?.let { queryParams["uid"] = it }
         sessionId?.let { queryParams["s"] = it }
         
@@ -306,6 +314,7 @@ internal class ApiService(
      * @param os İşletim sistemi
      * @param language Dil
      * @param sessionId Session ID
+     * @param anonymousId Anonymous ID (SDK tarafından otomatik üretilir)
      * @return Başarılı olursa true, aksi halde false (exception fırlatmaz)
      */
     fun trackPerformanceEvent(
@@ -315,12 +324,13 @@ internal class ApiService(
         deviceId: String,
         os: String,
         language: String,
-        sessionId: String?
+        sessionId: String?,
+        anonymousId: String?
     ): Boolean {
         return try {
             // Validasyon kontrolü
             val validationResult = validatePerformanceEventParams(
-                params, appName, deviceId, os, language, sessionId
+                params, appName, deviceId, os, language, sessionId, anonymousId
             )
             
             if (validationResult is ValidationResult.Failure) {
@@ -331,7 +341,7 @@ internal class ApiService(
             
             val endpoint = getPerformanceEndpoint(eventType)
             val queryParams = buildPerformanceQueryParams(
-                params, appName, deviceId, os, language, sessionId
+                params, appName, deviceId, os, language, sessionId, anonymousId
             )
             
             val httpUrl = "$performanceBaseUrl/$endpoint".toHttpUrl()
