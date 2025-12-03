@@ -12,30 +12,14 @@ import com.mimeda.sdk.events.PerformanceEventParams
 import com.mimeda.sdk.utils.DeviceInfo
 import com.mimeda.sdk.utils.Logger
 
-/**
- * Mimeda SDK - Ana SDK sınıfı
- * Singleton pattern kullanır
- * 
- * Kullanım:
- * ```
- * MimedaSDK.initialize(context, "your-api-key", Environment.PRODUCTION)
- * MimedaSDK.trackEvent("button_clicked", mapOf("button_id" to "login"))
- * ```
- * 
- * Not: Package name otomatik olarak context'ten alınır, geliştirici tarafından verilmez.
- */
 object MimedaSDK {
     private var isInitialized = false
     private var eventTracker: EventTracker? = null
 
     /**
-     * SDK'yı başlatır
      * @param context Android Context
-     * @param apiKey API anahtarı
-     * @param environment Environment seçimi (PRODUCTION veya STAGING), varsayılan: PRODUCTION
-     * 
-     * Package name otomatik olarak context.packageName'den alınır.
-     * Geliştirici tarafından verilmez.
+     * @param apiKey API key
+     * @param environment Environment selection (PRODUCTION or STAGING), default: PRODUCTION
      */
     @JvmOverloads
     fun initialize(
@@ -53,19 +37,16 @@ object MimedaSDK {
                 return
             }
 
-            // Package name'i otomatik olarak context'ten al
             val appPackageName = context.packageName
             if (appPackageName.isBlank()) {
                 Logger.e("Package name is required but could not be retrieved from context")
                 return
             }
 
-            // DeviceInfo'yu initialize et
             DeviceInfo.initialize(context)
 
             val client = ApiClient.createClient(apiKey, appPackageName)
             val apiService = ApiService(client, environment)
-            // ApplicationContext kullanarak memory leak önlenir
             val applicationContext = context.applicationContext
             eventTracker = EventTracker(apiService, applicationContext)
 
@@ -73,15 +54,13 @@ object MimedaSDK {
             Logger.s("MimedaSDK initialized successfully. Package: $appPackageName, Environment: $environment")
         } catch (e: Exception) {
             Logger.e("Failed to initialize MimedaSDK", e)
-            // Exception ana uygulamaya yansıtılmaz
         }
     }
 
     /**
-     * Event tracking yapar (event.mlink.com.tr'ye gönderilir)
-     * @param eventName Event adı (enum)
-     * @param eventParameter Event parametresi (enum)
-     * @param params Event parametreleri (opsiyonel)
+     * @param eventName Event name
+     * @param eventParameter Event parameter
+     * @param params Event parameters
      */
     fun trackEvent(
         eventName: EventName,
@@ -99,14 +78,11 @@ object MimedaSDK {
             }
         } catch (e: Exception) {
             Logger.e("An error occurred while tracking event", e)
-            // Exception ana uygulamaya yansıtılmaz
         }
     }
 
     /**
-     * Performance impression event tracking yapar (performance.mlink.com.tr/impressions'ye gönderilir)
-     * Search sonucu ekrana gelen ve kullanıcının ekranına girmiş ürün başına bir impression eventi tetiklenir
-     * @param params Performance event parametreleri
+     * @param params Performance event parameters
      */
     fun trackPerformanceImpression(params: PerformanceEventParams) {
         try {
@@ -123,14 +99,11 @@ object MimedaSDK {
             }
         } catch (e: Exception) {
             Logger.e("An error occurred while tracking performance impression event", e)
-            // Exception ana uygulamaya yansıtılmaz
         }
     }
 
     /**
-     * Performance click event tracking yapar (performance.mlink.com.tr/clicks'ye gönderilir)
-     * Sponsorlu çerçevesine sahip ürünlere tıklandığında tetiklenen eventtir
-     * @param params Performance event parametreleri
+     * @param params Performance event parameters
      */
     fun trackPerformanceClick(params: PerformanceEventParams) {
         try {
@@ -147,24 +120,13 @@ object MimedaSDK {
             }
         } catch (e: Exception) {
             Logger.e("An error occurred while tracking performance click event", e)
-            // Exception ana uygulamaya yansıtılmaz
         }
     }
 
-    /**
-     * SDK'nın başlatılıp başlatılmadığını kontrol eder
-     */
     fun isInitialized(): Boolean {
         return isInitialized
     }
 
-    /**
-     * SDK'yı kapatır ve kaynakları temizler
-     * ExecutorService'i düzgün şekilde kapatır (memory leak önleme)
-     * 
-     * Not: Genellikle uygulama kapanırken otomatik olarak temizlenir,
-     * ancak test senaryolarında veya özel durumlarda manuel olarak çağrılabilir.
-     */
     fun shutdown() {
         try {
             eventTracker?.shutdown()
@@ -172,7 +134,6 @@ object MimedaSDK {
             isInitialized = false
         } catch (e: Exception) {
             Logger.e("An error occurred while shutting down MimedaSDK", e)
-            // Exception ana uygulamaya yansıtılmaz
         }
     }
 }

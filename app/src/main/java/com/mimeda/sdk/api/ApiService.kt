@@ -13,25 +13,17 @@ import okhttp3.Request
 import java.io.IOException
 import java.util.UUID
 
-/**
- * Validation sonucu
- */
 private sealed class ValidationResult {
     object Success : ValidationResult()
     data class Failure(val errors: List<String>) : ValidationResult()
 }
 
-/**
- * API Service - HTTP isteklerini yönetir
- * Event tracking için API endpoint'lerine query parametreli GET isteği gönderir
- */
 internal class ApiService(
     private val client: okhttp3.OkHttpClient,
     private val environment: Environment
 ) {
     private val sdkVersion = com.mimeda.sdk.BuildConfig.SDK_VERSION
     
-    // Environment'a göre URL'leri seç
     private val eventBaseUrl: String = when (environment) {
         Environment.PRODUCTION -> com.mimeda.sdk.BuildConfig.PRODUCTION_EVENT_BASE_URL
         Environment.STAGING -> com.mimeda.sdk.BuildConfig.STAGING_EVENT_BASE_URL
@@ -42,9 +34,6 @@ internal class ApiService(
         Environment.STAGING -> com.mimeda.sdk.BuildConfig.STAGING_PERFORMANCE_BASE_URL
     }
     
-    /**
-     * Event tipine göre doğru base URL'yi döndürür
-     */
     private fun getBaseUrl(eventType: EventType): String {
         return when (eventType) {
             EventType.EVENT -> eventBaseUrl
@@ -52,9 +41,6 @@ internal class ApiService(
         }
     }
     
-    /**
-     * Event params için validasyon yapar
-     */
     private fun validateEventParams(
         eventName: EventName,
         eventParameter: EventParameter,
@@ -68,7 +54,6 @@ internal class ApiService(
     ): ValidationResult {
         val errors = mutableListOf<String>()
         
-        // Zorunlu alanlar kontrolü
         if (sdkVersion.isBlank()) errors.add("v (SdkVersion) is required")
         if (appName.isBlank()) errors.add("app (AppId) is required")
         if (deviceId.isBlank()) errors.add("d (DeviceId) is required")
@@ -86,9 +71,6 @@ internal class ApiService(
         }
     }
     
-    /**
-     * Performance event params için validasyon yapar
-     */
     private fun validatePerformanceEventParams(
         params: PerformanceEventParams,
         appName: String,
@@ -100,7 +82,6 @@ internal class ApiService(
     ): ValidationResult {
         val errors = mutableListOf<String>()
         
-        // Zorunlu alanlar kontrolü
         if (sdkVersion.isBlank()) errors.add("v (SdkVersion) is required")
         if (appName.isBlank()) errors.add("app (AppId) is required")
         if (deviceId.isBlank()) errors.add("d (DeviceId) is required")
@@ -121,9 +102,6 @@ internal class ApiService(
         }
     }
     
-    /**
-     * EventParams'i query parametrelerine dönüştürür
-     */
     private fun buildQueryParams(
         eventName: EventName,
         eventParameter: EventParameter,
@@ -137,10 +115,9 @@ internal class ApiService(
     ): Map<String, String> {
         val queryParams = mutableMapOf<String, String>()
         
-        // TraceId her event'te otomatik oluşturulur
+        // TraceId is automatically created for each event
         val traceId = UUID.randomUUID().toString()
         
-        // Zorunlu parametreler
         queryParams["v"] = sdkVersion
         queryParams["app"] = params.app ?: appName
         queryParams["t"] = (params.timestamp ?: System.currentTimeMillis()).toString()
@@ -151,8 +128,6 @@ internal class ApiService(
         queryParams["ep"] = eventParameter.value
         queryParams["tid"] = traceId
         
-        // Opsiyonel parametreler
-        // anonymousId önce params'tan kontrol et (geriye dönük uyumluluk için), yoksa otomatik üretileni kullan
         (params.anonymousId ?: anonymousId)?.let { queryParams["aid"] = it }
         params.userId?.let { queryParams["uid"] = it }
         params.lineItemIds?.let { queryParams["li"] = it }
@@ -167,9 +142,6 @@ internal class ApiService(
         return queryParams
     }
     
-    /**
-     * Query parametrelerini URL'e ekler
-     */
     private fun buildUrl(baseUrl: String, queryParams: Map<String, String>): String {
         val httpUrl = "$baseUrl/events".toHttpUrl()
         val urlBuilder = httpUrl.newBuilder()
@@ -183,20 +155,6 @@ internal class ApiService(
         return urlBuilder.build().toString()
     }
 
-    /**
-     * Event tracking için API'ye query parametreli GET isteği gönderir
-     * @param eventName Event adı
-     * @param eventParameter Event parametresi
-     * @param params Event parametreleri
-     * @param eventType Event tipi (EVENT veya PERFORMANCE)
-     * @param appName Uygulama adı
-     * @param deviceId Cihaz ID
-     * @param os İşletim sistemi
-     * @param language Dil
-     * @param sessionId Session ID
-     * @param anonymousId Anonymous ID (SDK tarafından otomatik üretilir)
-     * @return Başarılı olursa true, aksi halde false (exception fırlatmaz)
-     */
     fun trackEvent(
         eventName: EventName,
         eventParameter: EventParameter,
@@ -210,7 +168,6 @@ internal class ApiService(
         anonymousId: String?
     ): Boolean {
         return try {
-            // Validasyon kontrolü
             val validationResult = validateEventParams(
                 eventName, eventParameter, params,
                 appName, deviceId, os, language, sessionId, anonymousId
@@ -218,7 +175,6 @@ internal class ApiService(
             
             if (validationResult is ValidationResult.Failure) {
                 Logger.e("Event validation failed. Event: ${eventName.value}/${eventParameter.value}, Errors: ${validationResult.errors.joinToString(", ")}")
-                // Validasyon başarısız olsa bile true döner (200 gibi davranılır)
                 return true
             }
             
@@ -254,9 +210,6 @@ internal class ApiService(
         }
     }
     
-    /**
-     * PerformanceEventParams'i query parametrelerine dönüştürür
-     */
     private fun buildPerformanceQueryParams(
         params: PerformanceEventParams,
         appName: String,
@@ -268,10 +221,9 @@ internal class ApiService(
     ): Map<String, String> {
         val queryParams = mutableMapOf<String, String>()
         
-        // TraceId her event'te otomatik oluşturulur
+        // TraceId is automatically created for each event
         val traceId = UUID.randomUUID().toString()
         
-        // Zorunlu parametreler
         queryParams["v"] = sdkVersion
         queryParams["li"] = params.lineItemId
         queryParams["c"] = params.creativeId
@@ -285,9 +237,7 @@ internal class ApiService(
         queryParams["lng"] = language
         queryParams["tid"] = traceId
         
-        // Opsiyonel parametreler
         params.keyword?.let { queryParams["kw"] = it }
-        // anonymousId önce params'tan kontrol et (geriye dönük uyumluluk için), yoksa otomatik üretileni kullan
         (params.anonymousId ?: anonymousId)?.let { queryParams["aid"] = it }
         params.userId?.let { queryParams["uid"] = it }
         sessionId?.let { queryParams["s"] = it }
@@ -295,9 +245,6 @@ internal class ApiService(
         return queryParams
     }
     
-    /**
-     * Performance event endpoint'ini döndürür
-     */
     private fun getPerformanceEndpoint(eventType: PerformanceEventType): String {
         return when (eventType) {
             PerformanceEventType.IMPRESSION -> "impressions"
@@ -305,18 +252,6 @@ internal class ApiService(
         }
     }
     
-    /**
-     * Performance event tracking için API'ye query parametreli GET isteği gönderir
-     * @param eventType Performance event tipi (IMPRESSION veya CLICK)
-     * @param params Performance event parametreleri
-     * @param appName Uygulama adı
-     * @param deviceId Cihaz ID
-     * @param os İşletim sistemi
-     * @param language Dil
-     * @param sessionId Session ID
-     * @param anonymousId Anonymous ID (SDK tarafından otomatik üretilir)
-     * @return Başarılı olursa true, aksi halde false (exception fırlatmaz)
-     */
     fun trackPerformanceEvent(
         eventType: PerformanceEventType,
         params: PerformanceEventParams,
@@ -328,14 +263,12 @@ internal class ApiService(
         anonymousId: String?
     ): Boolean {
         return try {
-            // Validasyon kontrolü
             val validationResult = validatePerformanceEventParams(
                 params, appName, deviceId, os, language, sessionId, anonymousId
             )
             
             if (validationResult is ValidationResult.Failure) {
                 Logger.e("Performance event validation failed. Event Type: $eventType, Errors: ${validationResult.errors.joinToString(", ")}")
-                // Validasyon başarısız olsa bile true döner (200 gibi davranılır)
                 return true
             }
             
