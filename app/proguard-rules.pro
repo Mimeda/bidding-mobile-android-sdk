@@ -13,11 +13,21 @@
 # Mimeda SDK ProGuard Rules
 # ============================================
 
-# Keep SDK public API
--keep class com.mimeda.sdk.MimedaSDK { *; }
--keepclassmembers class com.mimeda.sdk.MimedaSDK {
-    public *;
+# Keep SDK public API and all internal classes
+-keep class com.mimeda.sdk.** { *; }
+-keepclassmembers class com.mimeda.sdk.** { *; }
+
+# Keep enums
+-keepclassmembers enum com.mimeda.sdk.** {
+    <fields>;
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
 }
+
+# Keep data classes
+-keepclassmembers class com.mimeda.sdk.events.** { *; }
+-keepclassmembers class com.mimeda.sdk.api.** { *; }
+-keepclassmembers class com.mimeda.sdk.utils.** { *; }
 
 # ============================================
 # OkHttp Rules

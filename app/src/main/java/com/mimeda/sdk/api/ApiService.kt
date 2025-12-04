@@ -1,6 +1,7 @@
 package com.mimeda.sdk.api
 
 import com.mimeda.sdk.Environment
+import com.mimeda.sdk.MimedaSDKErrorCallback
 import com.mimeda.sdk.events.EventName
 import com.mimeda.sdk.events.EventParameter
 import com.mimeda.sdk.events.EventParams
@@ -11,6 +12,7 @@ import com.mimeda.sdk.utils.Logger
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.util.UUID
 
 private sealed class ValidationResult {
@@ -20,16 +22,21 @@ private sealed class ValidationResult {
 
 internal class ApiService(
     private val client: okhttp3.OkHttpClient,
-    private val environment: Environment
+    private val environment: Environment,
+    private val errorCallback: MimedaSDKErrorCallback? = null,
+    private val testEventBaseUrl: String? = null,
+    private val testPerformanceBaseUrl: String? = null
 ) {
     private val sdkVersion = com.mimeda.sdk.BuildConfig.SDK_VERSION
+    private val maxRetries = com.mimeda.sdk.BuildConfig.MAX_RETRIES
+    private val retryBaseDelayMs = com.mimeda.sdk.BuildConfig.RETRY_BASE_DELAY_MS
     
-    private val eventBaseUrl: String = when (environment) {
+    private val eventBaseUrl: String = testEventBaseUrl ?: when (environment) {
         Environment.PRODUCTION -> com.mimeda.sdk.BuildConfig.PRODUCTION_EVENT_BASE_URL
         Environment.STAGING -> com.mimeda.sdk.BuildConfig.STAGING_EVENT_BASE_URL
     }
     
-    private val performanceBaseUrl: String = when (environment) {
+    private val performanceBaseUrl: String = testPerformanceBaseUrl ?: when (environment) {
         Environment.PRODUCTION -> com.mimeda.sdk.BuildConfig.PRODUCTION_PERFORMANCE_BASE_URL
         Environment.STAGING -> com.mimeda.sdk.BuildConfig.STAGING_PERFORMANCE_BASE_URL
     }
@@ -114,21 +121,19 @@ internal class ApiService(
         anonymousId: String?
     ): Map<String, String> {
         val queryParams = mutableMapOf<String, String>()
-        
-        // TraceId is automatically created for each event
         val traceId = UUID.randomUUID().toString()
         
         queryParams["v"] = sdkVersion
-        queryParams["app"] = params.app ?: appName
-        queryParams["t"] = (params.timestamp ?: System.currentTimeMillis()).toString()
-        queryParams["d"] = params.deviceId ?: deviceId
-        queryParams["os"] = params.os ?: os
-        queryParams["lng"] = params.language ?: language
+        queryParams["app"] = appName
+        queryParams["t"] = System.currentTimeMillis().toString()
+        queryParams["d"] = deviceId
+        queryParams["os"] = os
+        queryParams["lng"] = language
         queryParams["en"] = eventName.value
         queryParams["ep"] = eventParameter.value
         queryParams["tid"] = traceId
         
-        (params.anonymousId ?: anonymousId)?.let { queryParams["aid"] = it }
+        anonymousId?.let { queryParams["aid"] = it }
         params.userId?.let { queryParams["uid"] = it }
         params.lineItemIds?.let { queryParams["li"] = it }
         params.productList?.let { queryParams["pl"] = it }
@@ -155,6 +160,77 @@ internal class ApiService(
         return urlBuilder.build().toString()
     }
 
+    private fun executeWithRetry(request: Request, eventName: String = ""): Boolean {
+        var retryCount = 0
+        
+        while (retryCount <= maxRetries) {
+            try {
+                val response = client.newCall(request).execute()
+                val isSuccess = response.isSuccessful
+                
+                if (isSuccess) {
+                    if (eventName.isNotBlank()) {
+                        Logger.s("Event tracked successfully. Event: $eventName, Status: ${response.code}")
+                    }
+                    response.close()
+                    return true
+                } else {
+                    response.close()
+                    val statusCode = response.code
+                    
+                    if (statusCode in 400..499) {
+                        if (eventName.isNotBlank()) {
+                            Logger.e("Event tracking failed. Event: $eventName, Status: $statusCode, Message: ${response.message}")
+                        }
+                        return false
+                    }
+                    
+                    if (retryCount == maxRetries) {
+                        if (eventName.isNotBlank()) {
+                            Logger.e("Event tracking failed after retries. Event: $eventName, Status: $statusCode")
+                        }
+                        return false
+                    }
+                }
+            } catch (e: SocketTimeoutException) {
+                if (retryCount == maxRetries) {
+                    if (eventName.isNotBlank()) {
+                        Logger.e("Network timeout after retries. Event: $eventName", e)
+                    }
+                    return false
+                }
+            } catch (e: IOException) {
+                if (retryCount == maxRetries) {
+                    if (eventName.isNotBlank()) {
+                        Logger.e("Network error after retries. Event: $eventName", e)
+                    }
+                    return false
+                }
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            } catch (e: Exception) {
+                if (eventName.isNotBlank()) {
+                    Logger.e("Unexpected error. Event: $eventName", e)
+                }
+                return false
+            }
+            
+            retryCount++
+            if (retryCount <= maxRetries) {
+                try {
+                    val delay = retryBaseDelayMs * (1 shl (retryCount - 1))
+                    Thread.sleep(delay)
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return false
+                }
+            }
+        }
+        
+        return false
+    }
+
     fun trackEvent(
         eventName: EventName,
         eventParameter: EventParameter,
@@ -174,7 +250,13 @@ internal class ApiService(
             )
             
             if (validationResult is ValidationResult.Failure) {
-                Logger.e("Event validation failed. Event: ${eventName.value}/${eventParameter.value}, Errors: ${validationResult.errors.joinToString(", ")}")
+                val errorMessage = "Event validation failed. Event: ${eventName.value}/${eventParameter.value}, Errors: ${validationResult.errors.joinToString(", ")}"
+                Logger.e(errorMessage)
+                try {
+                    errorCallback?.onValidationFailed(eventName, validationResult.errors)
+                } catch (e: Exception) {
+                    Logger.e("Error in validation callback", e)
+                }
                 return true
             }
             
@@ -190,22 +272,22 @@ internal class ApiService(
                 .get()
                 .build()
 
-            val response = client.newCall(request).execute()
-
-            val isSuccess = response.isSuccessful
-            if (isSuccess) {
-                Logger.s("Event tracked successfully. Event: ${eventName.value}/${eventParameter.value}, Status: ${response.code}")
-            } else {
-                Logger.e("Event tracking failed. Event: ${eventName.value}/${eventParameter.value}, Status: ${response.code}, Message: ${response.message}")
+            val success = executeWithRetry(request, "${eventName.value}/${eventParameter.value}")
+            if (!success) {
+                try {
+                    errorCallback?.onEventTrackingFailed(eventName, eventParameter, Exception("Event tracking failed"))
+                } catch (callbackException: Exception) {
+                    Logger.e("Error in event tracking callback", callbackException)
+                }
             }
-
-            response.close()
-            isSuccess
-        } catch (e: IOException) {
-            Logger.e("Network error occurred while tracking event: ${eventName.value}/${eventParameter.value}", e)
-            false
+            return success
         } catch (e: Exception) {
             Logger.e("An unexpected error occurred while tracking event: ${eventName.value}/${eventParameter.value}", e)
+            try {
+                errorCallback?.onEventTrackingFailed(eventName, eventParameter, e)
+            } catch (callbackException: Exception) {
+                Logger.e("Error in event tracking callback", callbackException)
+            }
             false
         }
     }
@@ -220,8 +302,6 @@ internal class ApiService(
         anonymousId: String?
     ): Map<String, String> {
         val queryParams = mutableMapOf<String, String>()
-        
-        // TraceId is automatically created for each event
         val traceId = UUID.randomUUID().toString()
         
         queryParams["v"] = sdkVersion
@@ -230,7 +310,7 @@ internal class ApiService(
         queryParams["au"] = params.adUnit
         queryParams["psku"] = params.productSku
         queryParams["pyl"] = params.payload
-        queryParams["t"] = (params.timestamp ?: System.currentTimeMillis()).toString()
+        queryParams["t"] = System.currentTimeMillis().toString()
         queryParams["os"] = os
         queryParams["app"] = appName
         queryParams["d"] = deviceId
@@ -238,7 +318,7 @@ internal class ApiService(
         queryParams["tid"] = traceId
         
         params.keyword?.let { queryParams["kw"] = it }
-        (params.anonymousId ?: anonymousId)?.let { queryParams["aid"] = it }
+        anonymousId?.let { queryParams["aid"] = it }
         params.userId?.let { queryParams["uid"] = it }
         sessionId?.let { queryParams["s"] = it }
         
@@ -268,7 +348,13 @@ internal class ApiService(
             )
             
             if (validationResult is ValidationResult.Failure) {
-                Logger.e("Performance event validation failed. Event Type: $eventType, Errors: ${validationResult.errors.joinToString(", ")}")
+                val errorMessage = "Performance event validation failed. Event Type: $eventType, Errors: ${validationResult.errors.joinToString(", ")}"
+                Logger.e(errorMessage)
+                try {
+                    errorCallback?.onValidationFailed(null, validationResult.errors)
+                } catch (e: Exception) {
+                    Logger.e("Error in validation callback", e)
+                }
                 return true
             }
             
@@ -293,22 +379,22 @@ internal class ApiService(
                 .get()
                 .build()
 
-            val response = client.newCall(request).execute()
-
-            val isSuccess = response.isSuccessful
-            if (isSuccess) {
-                Logger.s("Performance event tracked successfully. Event Type: $eventType, Status: ${response.code}")
-            } else {
-                Logger.e("Performance event tracking failed. Event Type: $eventType, Status: ${response.code}, Message: ${response.message}")
+            val success = executeWithRetry(request, "Performance/$eventType")
+            if (!success) {
+                try {
+                    errorCallback?.onPerformanceEventTrackingFailed(eventType, Exception("Performance event tracking failed"))
+                } catch (callbackException: Exception) {
+                    Logger.e("Error in performance event tracking callback", callbackException)
+                }
             }
-
-            response.close()
-            isSuccess
-        } catch (e: IOException) {
-            Logger.e("Network error occurred while tracking performance event: $eventType", e)
-            false
+            return success
         } catch (e: Exception) {
             Logger.e("An unexpected error occurred while tracking performance event: $eventType", e)
+            try {
+                errorCallback?.onPerformanceEventTrackingFailed(eventType, e)
+            } catch (callbackException: Exception) {
+                Logger.e("Error in performance event tracking callback", callbackException)
+            }
             false
         }
     }

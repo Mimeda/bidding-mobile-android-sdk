@@ -9,23 +9,27 @@ import com.mimeda.sdk.events.EventParams
 import com.mimeda.sdk.events.EventTracker
 import com.mimeda.sdk.events.EventType
 import com.mimeda.sdk.events.PerformanceEventParams
+import com.mimeda.sdk.events.PerformanceEventType
 import com.mimeda.sdk.utils.DeviceInfo
 import com.mimeda.sdk.utils.Logger
 
 object MimedaSDK {
+    @Volatile
     private var isInitialized = false
+    
+    @Volatile
     private var eventTracker: EventTracker? = null
+    
+    @Volatile
+    private var errorCallback: MimedaSDKErrorCallback? = null
 
-    /**
-     * @param context Android Context
-     * @param apiKey API key
-     * @param environment Environment selection (PRODUCTION or STAGING), default: PRODUCTION
-     */
     @JvmOverloads
+    @Synchronized
     fun initialize(
         context: Context,
         apiKey: String,
-        environment: Environment = Environment.PRODUCTION
+        environment: Environment = Environment.PRODUCTION,
+        errorCallback: MimedaSDKErrorCallback? = null
     ) {
         try {
             if (isInitialized) {
@@ -45,8 +49,10 @@ object MimedaSDK {
 
             DeviceInfo.initialize(context)
 
+            this.errorCallback = errorCallback
+
             val client = ApiClient.createClient(apiKey, appPackageName)
-            val apiService = ApiService(client, environment)
+            val apiService = ApiService(client, environment, errorCallback)
             val applicationContext = context.applicationContext
             eventTracker = EventTracker(apiService, applicationContext)
 
@@ -57,11 +63,6 @@ object MimedaSDK {
         }
     }
 
-    /**
-     * @param eventName Event name
-     * @param eventParameter Event parameter
-     * @param params Event parameters
-     */
     fun trackEvent(
         eventName: EventName,
         eventParameter: EventParameter,
@@ -81,9 +82,6 @@ object MimedaSDK {
         }
     }
 
-    /**
-     * @param params Performance event parameters
-     */
     fun trackPerformanceImpression(params: PerformanceEventParams) {
         try {
             if (!isInitialized) {
@@ -92,7 +90,7 @@ object MimedaSDK {
             }
 
             eventTracker?.trackPerformance(
-                com.mimeda.sdk.events.PerformanceEventType.IMPRESSION,
+                PerformanceEventType.IMPRESSION,
                 params
             ) ?: run {
                 Logger.e("EventTracker is not available")
@@ -102,9 +100,6 @@ object MimedaSDK {
         }
     }
 
-    /**
-     * @param params Performance event parameters
-     */
     fun trackPerformanceClick(params: PerformanceEventParams) {
         try {
             if (!isInitialized) {
@@ -113,7 +108,7 @@ object MimedaSDK {
             }
 
             eventTracker?.trackPerformance(
-                com.mimeda.sdk.events.PerformanceEventType.CLICK,
+                PerformanceEventType.CLICK,
                 params
             ) ?: run {
                 Logger.e("EventTracker is not available")
@@ -127,6 +122,7 @@ object MimedaSDK {
         return isInitialized
     }
 
+    @Synchronized
     fun shutdown() {
         try {
             eventTracker?.shutdown()

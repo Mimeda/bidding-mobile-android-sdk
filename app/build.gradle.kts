@@ -24,6 +24,8 @@ android {
         val readTimeout = (project.findProperty("MIMEDA_READ_TIMEOUT") as String?)?.toLongOrNull() ?: 30L
         val writeTimeout = (project.findProperty("MIMEDA_WRITE_TIMEOUT") as String?)?.toLongOrNull() ?: 30L
         val enableDebugLogging = (project.findProperty("MIMEDA_DEBUG_LOGGING") as String?)?.toBoolean() ?: false
+        val maxRetries = (project.findProperty("MIMEDA_MAX_RETRIES") as String?)?.toIntOrNull() ?: 3
+        val retryBaseDelayMs = (project.findProperty("MIMEDA_RETRY_BASE_DELAY_MS") as String?)?.toLongOrNull() ?: 1000L
 
         // BuildConfig field'ları (URL'ler productFlavors'da tanımlı)
         buildConfigField("String", "SDK_VERSION", "\"$sdkVersion\"")
@@ -31,6 +33,8 @@ android {
         buildConfigField("long", "READ_TIMEOUT_SECONDS", "${readTimeout}L")
         buildConfigField("long", "WRITE_TIMEOUT_SECONDS", "${writeTimeout}L")
         buildConfigField("boolean", "DEBUG_LOGGING", if (enableDebugLogging) "true" else "false")
+        buildConfigField("int", "MAX_RETRIES", "$maxRetries")
+        buildConfigField("long", "RETRY_BASE_DELAY_MS", "${retryBaseDelayMs}L")
     }
 
     productFlavors {
@@ -73,6 +77,12 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -88,6 +98,16 @@ dependencies {
     
     // Testing
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.mockito:mockito-core:5.0.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.0.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.test:rules:1.5.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    androidTestImplementation("androidx.test:core-ktx:1.5.0")
+    androidTestImplementation("androidx.test.ext:junit-ktx:1.3.0")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
