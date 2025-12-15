@@ -5,11 +5,12 @@ import android.util.Log
 internal object Logger {
     private const val TAG = "MimedaSDK"
     
-    internal var isDebugEnabled = com.mimeda.sdk.BuildConfig.DEBUG_LOGGING && com.mimeda.sdk.BuildConfig.DEBUG
+    @Volatile
+    internal var isDebugEnabled = com.mimeda.sdk.BuildConfig.DEBUG_LOGGING
         private set
     
     internal fun setDebugLogging(enabled: Boolean) {
-        isDebugEnabled = enabled && com.mimeda.sdk.BuildConfig.DEBUG
+        isDebugEnabled = enabled
     }
 
     fun i(message: String) {
