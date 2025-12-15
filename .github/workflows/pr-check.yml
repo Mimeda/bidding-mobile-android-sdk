@@ -177,37 +177,191 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       
-      - name: Build release AAR
-        run: ./gradlew :app:assembleProductionRelease --no-daemon
+      - name: Build release artifacts
+        run: |
+          echo "🔨 Building release AAR..."
+          ./gradlew :app:assembleProductionRelease --no-daemon
+          
+          echo "📦 Generating POM, sources and javadoc..."
+          ./gradlew :app:generatePomFileForMavenPublication --no-daemon || true
+          ./gradlew :app:sourceJar --no-daemon || true
+          ./gradlew :app:javaDocJar --no-daemon || true
       
-      - name: Debug GPG Key Format
+      - name: Prepare artifacts for signing
+        id: artifacts
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          GROUP_PATH="tr/com/mimeda"
+          ARTIFACT_ID="bidding-mobile-android-sdk"
+          
+          # Create bundle directory structure
+          BUNDLE_DIR="bundle/${GROUP_PATH}/${ARTIFACT_ID}/${VERSION}"
+          mkdir -p "$BUNDLE_DIR"
+          
+          # Find and copy AAR
+          AAR_FILE=$(find app/build/outputs/aar -name "*productionRelease*.aar" | head -1)
+          if [ -z "$AAR_FILE" ]; then
+            echo "❌ AAR file not found!"
+            exit 1
+          fi
+          cp "$AAR_FILE" "$BUNDLE_DIR/${ARTIFACT_ID}-${VERSION}.aar"
+          echo "✅ AAR copied"
+          
+          # Create POM file
+          cat > "$BUNDLE_DIR/${ARTIFACT_ID}-${VERSION}.pom" << 'POMEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <project xmlns="http://maven.apache.org/POM/4.0.0"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+            <modelVersion>4.0.0</modelVersion>
+            <groupId>tr.com.mimeda</groupId>
+            <artifactId>bidding-mobile-android-sdk</artifactId>
+            <version>VERSION_PLACEHOLDER</version>
+            <packaging>aar</packaging>
+            <name>Mimeda Android SDK</name>
+            <description>Android SDK for Mimeda bidding platform</description>
+            <url>https://mimeda.com.tr</url>
+            <developers>
+              <developer>
+                <name>Mimeda Team</name>
+                <organization>Mimeda</organization>
+                <organizationUrl>https://mimeda.com.tr</organizationUrl>
+              </developer>
+            </developers>
+          </project>
+          POMEOF
+          
+          # Replace version placeholder
+          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/g" "$BUNDLE_DIR/${ARTIFACT_ID}-${VERSION}.pom"
+          echo "✅ POM created"
+          
+          # Create empty sources and javadoc jars (required by Central)
+          cd "$BUNDLE_DIR"
+          echo "Manifest-Version: 1.0" > manifest.txt
+          jar cfm "${ARTIFACT_ID}-${VERSION}-sources.jar" manifest.txt
+          jar cfm "${ARTIFACT_ID}-${VERSION}-javadoc.jar" manifest.txt
+          rm manifest.txt
+          cd -
+          echo "✅ Sources and Javadoc JARs created"
+          
+          echo "bundle_dir=$BUNDLE_DIR" >> $GITHUB_OUTPUT
+          echo "artifact_id=$ARTIFACT_ID" >> $GITHUB_OUTPUT
+          
+          echo "📋 Bundle contents:"
+          ls -la "$BUNDLE_DIR"
+      
+      - name: Import GPG key and sign artifacts
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
-          echo "📋 GPG Key Debug:"
-          echo "Key length: ${#SIGNING_KEY} chars"
-          echo "First 50 chars: ${SIGNING_KEY:0:50}"
-          echo "Contains BEGIN PGP: $(echo "$SIGNING_KEY" | grep -c 'BEGIN PGP' || echo '0')"
-          echo "Contains PRIVATE KEY: $(echo "$SIGNING_KEY" | grep -c 'PRIVATE KEY' || echo '0')"
+          BUNDLE_DIR="${{ steps.artifacts.outputs.bundle_dir }}"
+          ARTIFACT_ID="${{ steps.artifacts.outputs.artifact_id }}"
+          VERSION="${{ steps.version.outputs.version }}"
           
-          # Eğer base64 ise decode dene
-          if echo "$SIGNING_KEY" | base64 -d > /tmp/decoded_key.txt 2>/dev/null; then
-            echo "Key appears to be base64 encoded"
-            echo "Decoded first line: $(head -1 /tmp/decoded_key.txt)"
+          echo "🔐 Importing GPG key..."
+          
+          # Import the key (try base64 decode first, then raw)
+          if echo "$SIGNING_KEY" | base64 -d 2>/dev/null | gpg --batch --import 2>/dev/null; then
+            echo "✅ GPG key imported (was base64 encoded)"
+          elif echo "$SIGNING_KEY" | gpg --batch --import 2>/dev/null; then
+            echo "✅ GPG key imported (was raw ASCII)"
           else
-            echo "Key is NOT base64 encoded (raw ASCII)"
+            echo "❌ Failed to import GPG key"
+            exit 1
           fi
+          
+          # List keys
+          echo "📋 Available keys:"
+          gpg --list-secret-keys --keyid-format LONG
+          
+          # Sign all artifacts
+          echo "✍️ Signing artifacts..."
+          cd "$BUNDLE_DIR"
+          
+          for file in *.aar *.pom *.jar; do
+            if [ -f "$file" ]; then
+              echo "Signing $file..."
+              echo "$SIGNING_PASSWORD" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 -ab "$file"
+              if [ -f "${file}.asc" ]; then
+                echo "✅ ${file}.asc created"
+              else
+                echo "❌ Failed to sign $file"
+                exit 1
+              fi
+            fi
+          done
+          
+          echo "📋 Signed bundle contents:"
+          ls -la
       
-      - name: Publish to Sonatype Central
-        env:
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSSRH_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+      - name: Create deployment bundle
+        id: bundle
         run: |
-          echo "🚀 Publishing version ${{ steps.version.outputs.version }} to ${{ steps.version.outputs.environment }}"
-          ./gradlew :app:publishToMavenCentral --no-daemon
+          echo "📦 Creating deployment bundle..."
+          cd bundle
+          zip -r ../central-bundle.zip .
+          cd ..
+          
+          echo "📋 Bundle info:"
+          ls -la central-bundle.zip
+          unzip -l central-bundle.zip
+          
+          echo "bundle_path=central-bundle.zip" >> $GITHUB_OUTPUT
+      
+      - name: Upload to Sonatype Central
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ENVIRONMENT="${{ steps.version.outputs.environment }}"
+          
+          echo "🚀 Uploading version $VERSION to Sonatype Central..."
+          
+          # Create auth token (base64 of username:password)
+          AUTH_TOKEN=$(echo -n "${OSSRH_USERNAME}:${OSSRH_PASSWORD}" | base64)
+          
+          # Upload bundle
+          # publishingType: AUTOMATIC for auto-publish, USER_MANAGED for manual
+          PUBLISHING_TYPE="AUTOMATIC"
+          if [ "$ENVIRONMENT" == "staging" ]; then
+            PUBLISHING_TYPE="USER_MANAGED"  # Beta versions need manual approval
+          fi
+          
+          RESPONSE=$(curl --request POST \
+            --silent \
+            --write-out "\n%{http_code}" \
+            --header "Authorization: Bearer ${AUTH_TOKEN}" \
+            --form "bundle=@central-bundle.zip" \
+            "https://central.sonatype.com/api/v1/publisher/upload?name=mimeda-sdk-${VERSION}&publishingType=${PUBLISHING_TYPE}")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          
+          if [ "$HTTP_CODE" -eq 201 ]; then
+            DEPLOYMENT_ID="$BODY"
+            echo "✅ Upload successful! Deployment ID: $DEPLOYMENT_ID"
+            echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_ENV
+            
+            # Check status
+            echo "📋 Checking deployment status..."
+            sleep 5
+            
+            STATUS_RESPONSE=$(curl --request POST \
+              --silent \
+              --header "Authorization: Bearer ${AUTH_TOKEN}" \
+              "https://central.sonatype.com/api/v1/publisher/status?id=${DEPLOYMENT_ID}")
+            
+            echo "Status: $STATUS_RESPONSE"
+          else
+            echo "❌ Upload failed with HTTP $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
+          fi
       
       - name: Create release tag (Production only)
         if: steps.version.outputs.is_staging == 'false'
