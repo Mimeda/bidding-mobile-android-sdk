@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    `maven-publish`
+    signing
     jacoco
 }
 
@@ -85,6 +87,13 @@ android {
             isIncludeAndroidResources = true
         }
     }
+    
+    publishing {
+        singleVariant("productionRelease") {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
 }
 
 jacoco {
@@ -147,4 +156,67 @@ dependencies {
     androidTestImplementation("androidx.test:core-ktx:1.5.0")
     androidTestImplementation("androidx.test.ext:junit-ktx:1.3.0")
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+}
+
+// ============================================
+// Maven Publishing Configuration
+// ============================================
+
+val sdkVersion = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
+val groupId = "tr.com.mimeda"
+val artifactId = "bidding-mobile-android-sdk"
+
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                // Production release variant'ını kullan
+                from(components["productionRelease"])
+                
+                groupId = groupId
+                artifactId = artifactId
+                version = sdkVersion
+                
+                pom {
+                    name.set("Mimeda Android SDK")
+                    description.set("Android SDK for Mimeda bidding platform")
+                    url.set("https://github.com/mimeda")
+                    
+                    developers {
+                        developer {
+                            name.set("Mimeda Team")
+                            organization.set("Mimeda")
+                            organizationUrl.set("https://mimeda.com.tr")
+                        }
+                    }
+                }
+            }
+        }
+        
+        repositories {
+            maven {
+                val isSnapshot = sdkVersion.endsWith("-SNAPSHOT") || sdkVersion.contains("-beta")
+                val releasesRepoUrl = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+                val snapshotsRepoUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+                
+                url = if (isSnapshot) snapshotsRepoUrl else releasesRepoUrl
+                
+                credentials {
+                    username = project.findProperty("OSSRH_USERNAME") as String? ?: ""
+                    password = project.findProperty("OSSRH_PASSWORD") as String? ?: ""
+                }
+            }
+        }
+    }
+    
+    signing {
+        val signingKeyId = project.findProperty("SIGNING_KEY_ID") as String?
+        val signingPassword = project.findProperty("SIGNING_PASSWORD") as String?
+        val signingKey = project.findProperty("SIGNING_KEY") as String?
+        
+        if (signingKeyId != null && signingPassword != null && signingKey != null) {
+            useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+            sign(publishing.publications["release"])
+        }
+    }
 }

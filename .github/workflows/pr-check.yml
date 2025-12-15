@@ -2,8 +2,17 @@ name: PR Check - Build & Test Coverage
 
 on:
   pull_request:
-    branches: [ main, master, develop, test ]
+    branches: [ main, master, develop, test, staging ]
     types: [ opened, synchronize, reopened ]
+  push:
+    branches:
+      - staging
+      - master
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
 
 permissions:
   contents: read
