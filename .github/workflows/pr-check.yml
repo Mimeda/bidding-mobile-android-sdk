@@ -223,6 +223,10 @@ jobs:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
         run: |
+          # Debug
+          echo "OSSRH_USERNAME: $([ -n "$OSSRH_USERNAME" ] && echo "SET (${#OSSRH_USERNAME} chars)" || echo "MISSING")"
+          echo "OSSRH_PASSWORD: $([ -n "$OSSRH_PASSWORD" ] && echo "SET (${#OSSRH_PASSWORD} chars)" || echo "MISSING")"
+          
           # Sonatype credentials'ları gradle.properties'e ekle
           {
             echo ""
@@ -230,7 +234,9 @@ jobs:
             echo "OSSRH_PASSWORD=$OSSRH_PASSWORD"
           } >> gradle.properties
           
+          # Verify
           echo "✅ Credentials configured"
+          grep "OSSRH" gradle.properties | sed 's/=.*/=***/'
       
       - name: Publish to Sonatype Central
         env:

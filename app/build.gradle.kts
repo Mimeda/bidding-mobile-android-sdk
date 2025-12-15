@@ -162,9 +162,9 @@ dependencies {
 // Maven Publishing Configuration
 // ============================================
 
-val sdkVersion = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
-val groupId = "tr.com.mimeda"
-val artifactId = "bidding-mobile-android-sdk"
+val publishVersion: String = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
+val publishGroupId = "tr.com.mimeda"
+val publishArtifactId = "bidding-mobile-android-sdk"
 
 afterEvaluate {
     publishing {
@@ -173,9 +173,9 @@ afterEvaluate {
                 // Production release variant'ını kullan
                 from(components["productionRelease"])
                 
-                groupId = groupId
-                artifactId = artifactId
-                version = sdkVersion
+                groupId = publishGroupId
+                artifactId = publishArtifactId
+                version = publishVersion
                 
                 pom {
                     name.set("Mimeda Android SDK")
@@ -195,7 +195,7 @@ afterEvaluate {
         
         repositories {
             maven {
-                val isSnapshot = sdkVersion.endsWith("-SNAPSHOT") || sdkVersion.contains("-beta")
+                val isSnapshot = publishVersion.endsWith("-SNAPSHOT") || publishVersion.contains("-beta")
                 val releasesRepoUrl = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
                 val snapshotsRepoUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
                 
