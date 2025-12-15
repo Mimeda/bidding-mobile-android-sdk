@@ -176,25 +176,37 @@ jobs:
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
         run: |
           if [ -n "$SIGNING_KEY" ] && [ -n "$SIGNING_PASSWORD" ]; then
             # GPG dizinini oluştur
             mkdir -p ~/.gnupg
             chmod 700 ~/.gnupg
             
-            # GPG agent ayarları
-            echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-            echo "use-agent" >> ~/.gnupg/gpg.conf
+            # GPG agent ayarları - loopback pinentry için
+            echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+            echo "allow-preset-passphrase" >> ~/.gnupg/gpg-agent.conf
+            
+            echo "use-agent" > ~/.gnupg/gpg.conf
             echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+            
+            chmod 600 ~/.gnupg/*
             
             # GPG agent'ı yeniden başlat
             gpgconf --kill gpg-agent || true
+            gpg-agent --daemon || true
             
             # Key'i import et
-            echo "$SIGNING_KEY" | base64 -d | gpg --batch --import --passphrase "$SIGNING_PASSWORD"
+            echo "$SIGNING_KEY" | base64 -d | gpg --batch --import
+            
+            # Passphrase'i preset et (signing sırasında sorulmasın)
+            KEYGRIP=$(gpg --list-secret-keys --with-keygrip --with-colons 2>/dev/null | grep grp | head -1 | cut -d: -f10)
+            if [ -n "$KEYGRIP" ]; then
+              echo "$SIGNING_PASSWORD" | /usr/lib/gnupg/gpg-preset-passphrase --preset "$KEYGRIP" 2>/dev/null || true
+            fi
             
             # Import edildi mi kontrol et
-            echo "✅ GPG keys imported:"
+            echo "✅ GPG keys imported"
             gpg --list-secret-keys --keyid-format LONG
           else
             echo "⚠️ GPG signing keys not found, skipping signing"
@@ -210,54 +222,29 @@ jobs:
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY }}
         run: |
-          echo "📋 Checking secrets (lengths only)..."
-          echo "OSSRH_USERNAME: $([ -n "$OSSRH_USERNAME" ] && echo "SET" || echo "MISSING")"
-          echo "OSSRH_PASSWORD: $([ -n "$OSSRH_PASSWORD" ] && echo "SET" || echo "MISSING")"
-          echo "SIGNING_KEY_ID: $([ -n "$SIGNING_KEY_ID" ] && echo "SET (${#SIGNING_KEY_ID} chars)" || echo "MISSING")"
-          echo "SIGNING_PASSWORD: $([ -n "$SIGNING_PASSWORD" ] && echo "SET" || echo "MISSING")"
-          echo "SIGNING_KEY: $([ -n "$SIGNING_KEY_BASE64" ] && echo "SET (${#SIGNING_KEY_BASE64} chars)" || echo "MISSING")"
-          
-          # GPG key'i dosyaya yaz (base64 decode)
-          echo "$SIGNING_KEY_BASE64" | base64 -d > /tmp/secring.gpg 2>/dev/null || {
-            echo "⚠️ Base64 decode failed, trying direct write..."
-            echo "$SIGNING_KEY_BASE64" > /tmp/secring.gpg
-          }
-          
-          # Key formatını kontrol et (içeriği göstermeden)
-          KEY_SIZE=$(wc -c < /tmp/secring.gpg)
-          echo "Key file size: $KEY_SIZE bytes"
-          
-          if head -1 /tmp/secring.gpg | grep -q "BEGIN PGP"; then
-            echo "✅ Key format: ASCII armored (correct)"
-          else
-            echo "❌ Key format: NOT ASCII armored (wrong!)"
-            echo "First line starts with: $(head -1 /tmp/secring.gpg | head -c 20)..."
-          fi
-          
-          # Credentials'ları gradle.properties'e ekle
+          # Sonatype credentials'ları gradle.properties'e ekle
           {
             echo ""
             echo "OSSRH_USERNAME=$OSSRH_USERNAME"
             echo "OSSRH_PASSWORD=$OSSRH_PASSWORD"
-            echo "SIGNING_KEY_ID=$SIGNING_KEY_ID"
-            echo "SIGNING_PASSWORD=$SIGNING_PASSWORD"
-            echo "SIGNING_KEY_FILE=/tmp/secring.gpg"
           } >> gradle.properties
           
           echo "✅ Credentials configured"
       
       - name: Publish to Sonatype Central
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
           echo "🚀 Publishing version ${{ steps.version.outputs.version }} to ${{ steps.version.outputs.environment }}"
-          ./gradlew :app:publishReleasePublicationToMavenRepository --no-daemon
-      
-      - name: Cleanup
-        if: always()
-        run: rm -f /tmp/secring.gpg
+          
+          # GPG passphrase için environment
+          export GPG_TTY=$(tty) || true
+          
+          # Gradle'a signing.gnupg.passphrase geç
+          ./gradlew :app:publishReleasePublicationToMavenRepository \
+            -Psigning.gnupg.passphrase="$SIGNING_PASSWORD" \
+            --no-daemon
       
       - name: Create release tag (Production only)
         if: steps.version.outputs.is_staging == 'false'

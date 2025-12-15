@@ -209,18 +209,10 @@ afterEvaluate {
         }
     }
     
+    // Signing - useGpgCmd() ile sistem GPG'sini kullanır
     signing {
-        val signingKeyId = project.findProperty("SIGNING_KEY_ID") as String?
-        val signingPassword = project.findProperty("SIGNING_PASSWORD") as String?
-        val signingKeyFile = project.findProperty("SIGNING_KEY_FILE") as String?
-        
-        if (!signingKeyId.isNullOrBlank() && !signingPassword.isNullOrBlank() && !signingKeyFile.isNullOrBlank()) {
-            val keyFile = File(signingKeyFile)
-            if (keyFile.exists()) {
-                val signingKey = keyFile.readText()
-                useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
-                sign(publishing.publications["release"])
-            }
-        }
+        // CI ortamında GPG key import edilmiş olmalı
+        useGpgCmd()
+        sign(publishing.publications["release"])
     }
 }
