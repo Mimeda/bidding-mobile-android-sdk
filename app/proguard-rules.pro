@@ -13,21 +13,60 @@
 # Mimeda SDK ProGuard Rules
 # ============================================
 
-# Keep SDK public API and all internal classes
--keep class com.mimeda.sdk.** { *; }
--keepclassmembers class com.mimeda.sdk.** { *; }
+# ============================================
+# PUBLIC API - Bu sınıflar korunmalı (obfuscate edilmez)
+# ============================================
 
-# Keep enums
--keepclassmembers enum com.mimeda.sdk.** {
-    <fields>;
-    public static **[] values();
-    public static ** valueOf(java.lang.String);
+# Main SDK entry point
+-keep public class com.mimeda.sdk.MimedaSDK {
+    public *;
 }
 
-# Keep data classes
--keepclassmembers class com.mimeda.sdk.events.** { *; }
--keepclassmembers class com.mimeda.sdk.api.** { *; }
--keepclassmembers class com.mimeda.sdk.utils.** { *; }
+# Environment enum
+-keep public enum com.mimeda.sdk.Environment {
+    *;
+}
+
+# Error callback interface
+-keep public interface com.mimeda.sdk.MimedaSDKErrorCallback {
+    *;
+}
+
+# Public event classes
+-keep public enum com.mimeda.sdk.events.EventName {
+    *;
+}
+
+-keep public enum com.mimeda.sdk.events.EventParameter {
+    *;
+}
+
+-keep public enum com.mimeda.sdk.events.PerformanceEventType {
+    *;
+}
+
+# Public data classes - tüm field'ları koru
+-keep public class com.mimeda.sdk.events.EventParams {
+    *;
+}
+
+-keep public class com.mimeda.sdk.events.PerformanceEventParams {
+    *;
+}
+
+# ============================================
+# INTERNAL CLASSES - Bu sınıflar obfuscate edilir
+# Sadece Gson serialization için gerekli anotasyonlar korunur
+# ============================================
+
+# Keep Gson serialized fields in internal classes
+-keepclassmembers class com.mimeda.sdk.api.** {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+-keepclassmembers class com.mimeda.sdk.events.** {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
 
 # ============================================
 # OkHttp Rules

@@ -26,7 +26,6 @@ jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
-    if: false  # Geçici olarak devre dışı - test aşamasında
     
     steps:
       - name: Checkout code
@@ -92,7 +91,6 @@ jobs:
   lint:
     name: Lint Check
     runs-on: ubuntu-latest
-    if: false  # Geçici olarak devre dışı - test aşamasında
     
     steps:
       - name: Checkout code
@@ -126,7 +124,7 @@ jobs:
   deploy:
     name: Deploy to Sonatype Central
     runs-on: ubuntu-latest
-    # needs: [build-and-test, lint]  # Geçici olarak devre dışı - test aşamasında
+    needs: [build-and-test, lint]
     # Sadece push event'inde çalış (PR'larda çalışmaz)
     if: github.event_name == 'push'
     
@@ -198,15 +196,7 @@ jobs:
           BUNDLE_DIR="bundle/${GROUP_PATH}/${ARTIFACT_ID}/${VERSION}"
           mkdir -p "$BUNDLE_DIR"
           
-          # Debug: List all AAR files
-          echo "📋 Looking for AAR files..."
-          echo "Contents of app/build/outputs/aar (if exists):"
-          ls -la app/build/outputs/aar/ 2>/dev/null || echo "Directory not found"
-          
-          echo "All AAR files in app/build:"
-          find app/build -name "*.aar" -type f 2>/dev/null || echo "No AAR files found"
-          
-          # Find and copy AAR (try multiple patterns)
+          # Find and copy AAR
           AAR_FILE=$(find app/build/outputs/aar -name "*.aar" 2>/dev/null | head -1)
           if [ -z "$AAR_FILE" ]; then
             AAR_FILE=$(find app/build -name "*.aar" -type f 2>/dev/null | head -1)
@@ -275,9 +265,6 @@ jobs:
           
           echo "bundle_dir=$BUNDLE_DIR" >> $GITHUB_OUTPUT
           echo "artifact_id=$ARTIFACT_ID" >> $GITHUB_OUTPUT
-          
-          echo "📋 Bundle contents:"
-          ls -la "$BUNDLE_DIR"
       
       - name: Import GPG key and sign artifacts
         env:
@@ -300,10 +287,6 @@ jobs:
             exit 1
           fi
           
-          # List keys
-          echo "📋 Available keys:"
-          gpg --list-secret-keys --keyid-format LONG
-          
           # Sign all artifacts
           echo "✍️ Signing artifacts..."
           cd "$BUNDLE_DIR"
@@ -320,9 +303,6 @@ jobs:
               fi
             fi
           done
-          
-          echo "📋 Signed bundle contents:"
-          ls -la
       
       - name: Generate checksums
         run: |
@@ -340,22 +320,13 @@ jobs:
               echo "✅ ${file}.md5 and ${file}.sha1 created"
             fi
           done
-          
-          echo "📋 Final bundle contents:"
-          ls -la
       
       - name: Create deployment bundle
         id: bundle
         run: |
-          echo "📦 Creating deployment bundle..."
           cd bundle
           zip -r ../central-bundle.zip .
           cd ..
-          
-          echo "📋 Bundle info:"
-          ls -la central-bundle.zip
-          unzip -l central-bundle.zip
-          
           echo "bundle_path=central-bundle.zip" >> $GITHUB_OUTPUT
       
       - name: Upload to Sonatype Central
@@ -388,27 +359,12 @@ jobs:
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | head -n -1)
           
-          echo "HTTP Status: $HTTP_CODE"
-          echo "Response: $BODY"
-          
           if [ "$HTTP_CODE" -eq 201 ]; then
             DEPLOYMENT_ID="$BODY"
             echo "✅ Upload successful! Deployment ID: $DEPLOYMENT_ID"
             echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_ENV
-            
-            # Check status
-            echo "📋 Checking deployment status..."
-            sleep 5
-            
-            STATUS_RESPONSE=$(curl --request POST \
-              --silent \
-              --header "Authorization: Bearer ${AUTH_TOKEN}" \
-              "https://central.sonatype.com/api/v1/publisher/status?id=${DEPLOYMENT_ID}")
-            
-            echo "Status: $STATUS_RESPONSE"
           else
             echo "❌ Upload failed with HTTP $HTTP_CODE"
-            echo "Response: $BODY"
             exit 1
           fi
       

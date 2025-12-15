@@ -54,7 +54,7 @@ object MimedaSDK {
             val client = ApiClient.createClient(apiKey, appPackageName)
             val apiService = ApiService(client, environment, errorCallback)
             val applicationContext = context.applicationContext
-            eventTracker = EventTracker(apiService, applicationContext)
+            eventTracker = EventTracker(apiService, applicationContext, errorCallback)
 
             isInitialized = true
             Logger.s("MimedaSDK initialized successfully. Package: $appPackageName, Environment: $environment")
@@ -120,6 +120,16 @@ object MimedaSDK {
 
     fun isInitialized(): Boolean {
         return isInitialized
+    }
+
+    /**
+     * SDK debug logging'ini runtime'da açıp kapatır.
+     * Not: Sadece debug build'lerde çalışır, release build'lerde her zaman kapalıdır.
+     * 
+     * @param enabled true ise logging açık, false ise kapalı
+     */
+    fun setDebugLogging(enabled: Boolean) {
+        Logger.setDebugLogging(enabled)
     }
 
     @Synchronized

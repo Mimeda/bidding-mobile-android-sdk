@@ -13,7 +13,7 @@ internal object ApiClient {
     fun createClient(apiKey: String, packageName: String): OkHttpClient {
         return try {
             val loggingInterceptor = HttpLoggingInterceptor().apply {
-                level = if (Logger.DEBUG) {
+                level = if (Logger.isDebugEnabled) {
                     HttpLoggingInterceptor.Level.BODY
                 } else {
                     HttpLoggingInterceptor.Level.NONE

@@ -6,13 +6,11 @@ import okhttp3.mockwebserver.RecordedRequest
 
 object TestHelpers {
     fun getSessionIdFromPrefs(context: Context): String? {
-        val prefs = context.getSharedPreferences("mimeda_sdk_session", Context.MODE_PRIVATE)
-        return SecurePreferences.getString(prefs, "session_id", null)
+        return SecurePreferences.getString(context, "session_id")
     }
     
     fun getAnonymousIdFromPrefs(context: Context): String? {
-        val prefs = context.getSharedPreferences("mimeda_sdk_session", Context.MODE_PRIVATE)
-        return SecurePreferences.getString(prefs, "anonymous_id", null)
+        return SecurePreferences.getString(context, "anonymous_id")
     }
     
     fun getTraceIdFromRequest(request: RecordedRequest): String? {
@@ -24,8 +22,6 @@ object TestHelpers {
     }
     
     fun clearSharedPreferences(context: Context) {
-        context.getSharedPreferences("mimeda_sdk_session", Context.MODE_PRIVATE)
-            .edit().clear().apply()
+        SecurePreferences.clear(context)
     }
 }
-
