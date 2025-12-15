@@ -221,7 +221,7 @@ jobs:
           cp "$AAR_FILE" "$BUNDLE_DIR/${ARTIFACT_ID}-${VERSION}.aar"
           echo "✅ AAR copied"
           
-          # Create POM file
+          # Create POM file with License and SCM (required by Central)
           cat > "$BUNDLE_DIR/${ARTIFACT_ID}-${VERSION}.pom" << 'POMEOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -235,6 +235,21 @@ jobs:
             <name>Mimeda Android SDK</name>
             <description>Android SDK for Mimeda bidding platform</description>
             <url>https://mimeda.com.tr</url>
+            
+            <licenses>
+              <license>
+                <name>Proprietary</name>
+                <url>https://mimeda.com.tr/sdk/license</url>
+                <distribution>repo</distribution>
+              </license>
+            </licenses>
+            
+            <scm>
+              <url>https://mimeda.com.tr</url>
+              <connection>scm:git:https://mimeda.com.tr</connection>
+              <developerConnection>scm:git:https://mimeda.com.tr</developerConnection>
+            </scm>
+            
             <developers>
               <developer>
                 <name>Mimeda Team</name>
@@ -307,6 +322,26 @@ jobs:
           done
           
           echo "📋 Signed bundle contents:"
+          ls -la
+      
+      - name: Generate checksums
+        run: |
+          BUNDLE_DIR="${{ steps.artifacts.outputs.bundle_dir }}"
+          cd "$BUNDLE_DIR"
+          
+          echo "🔢 Generating checksums..."
+          
+          # Generate MD5 and SHA1 for all artifacts (not for .asc files)
+          for file in *.aar *.pom *.jar; do
+            if [ -f "$file" ]; then
+              echo "Generating checksums for $file..."
+              md5sum "$file" | cut -d' ' -f1 > "${file}.md5"
+              sha1sum "$file" | cut -d' ' -f1 > "${file}.sha1"
+              echo "✅ ${file}.md5 and ${file}.sha1 created"
+            fi
+          done
+          
+          echo "📋 Final bundle contents:"
           ls -la
       
       - name: Create deployment bundle
