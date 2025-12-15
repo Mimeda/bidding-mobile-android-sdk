@@ -172,45 +172,18 @@ jobs:
           echo "Updated MIMEDA_SDK_VERSION to ${{ steps.version.outputs.version }}"
           cat gradle.properties | grep MIMEDA_SDK_VERSION
       
-      - name: Import GPG key
+      - name: Decode GPG key
+        id: gpg
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
         run: |
-          if [ -n "$SIGNING_KEY" ] && [ -n "$SIGNING_PASSWORD" ]; then
-            # GPG dizinini oluştur
-            mkdir -p ~/.gnupg
-            chmod 700 ~/.gnupg
-            
-            # GPG agent ayarları - loopback pinentry için
-            echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
-            echo "allow-preset-passphrase" >> ~/.gnupg/gpg-agent.conf
-            
-            echo "use-agent" > ~/.gnupg/gpg.conf
-            echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
-            
-            chmod 600 ~/.gnupg/*
-            
-            # GPG agent'ı yeniden başlat
-            gpgconf --kill gpg-agent || true
-            gpg-agent --daemon || true
-            
-            # Key'i import et
-            echo "$SIGNING_KEY" | base64 -d | gpg --batch --import
-            
-            # Passphrase'i preset et (signing sırasında sorulmasın)
-            KEYGRIP=$(gpg --list-secret-keys --with-keygrip --with-colons 2>/dev/null | grep grp | head -1 | cut -d: -f10)
-            if [ -n "$KEYGRIP" ]; then
-              echo "$SIGNING_PASSWORD" | /usr/lib/gnupg/gpg-preset-passphrase --preset "$KEYGRIP" 2>/dev/null || true
-            fi
-            
-            # Import edildi mi kontrol et
-            echo "✅ GPG keys imported"
-            gpg --list-secret-keys --keyid-format LONG
-          else
-            echo "⚠️ GPG signing keys not found, skipping signing"
-          fi
+          # Base64 decode GPG key
+          DECODED_KEY=$(echo "$SIGNING_KEY" | base64 -d)
+          # Multiline output için
+          echo "key<<EOF" >> $GITHUB_OUTPUT
+          echo "$DECODED_KEY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "✅ GPG key decoded"
       
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -218,39 +191,16 @@ jobs:
       - name: Build release AAR
         run: ./gradlew :app:assembleProductionRelease --no-daemon
       
-      - name: Setup credentials
-        env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-        run: |
-          # Debug
-          echo "OSSRH_USERNAME: $([ -n "$OSSRH_USERNAME" ] && echo "SET (${#OSSRH_USERNAME} chars)" || echo "MISSING")"
-          echo "OSSRH_PASSWORD: $([ -n "$OSSRH_PASSWORD" ] && echo "SET (${#OSSRH_PASSWORD} chars)" || echo "MISSING")"
-          
-          # Sonatype credentials'ları gradle.properties'e ekle
-          {
-            echo ""
-            echo "OSSRH_USERNAME=$OSSRH_USERNAME"
-            echo "OSSRH_PASSWORD=$OSSRH_PASSWORD"
-          } >> gradle.properties
-          
-          # Verify
-          echo "✅ Credentials configured"
-          grep "OSSRH" gradle.properties | sed 's/=.*/=***/'
-      
       - name: Publish to Sonatype Central
         env:
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSSRH_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ steps.gpg.outputs.key }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
         run: |
           echo "🚀 Publishing version ${{ steps.version.outputs.version }} to ${{ steps.version.outputs.environment }}"
-          
-          # GPG passphrase için environment
-          export GPG_TTY=$(tty) || true
-          
-          # Gradle'a signing.gnupg.passphrase geç
-          ./gradlew :app:publishReleasePublicationToMavenRepository \
-            -Psigning.gnupg.passphrase="$SIGNING_PASSWORD" \
-            --no-daemon
+          ./gradlew :app:publishToMavenCentral --no-daemon
       
       - name: Create release tag (Production only)
         if: steps.version.outputs.is_staging == 'false'

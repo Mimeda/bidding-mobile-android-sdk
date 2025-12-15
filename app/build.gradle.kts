@@ -1,8 +1,10 @@
+import com.vanniktech.maven.publish.SonatypeHost
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    `maven-publish`
-    signing
+    alias(libs.plugins.central.publishing)
     jacoco
 }
 
@@ -87,13 +89,6 @@ android {
             isIncludeAndroidResources = true
         }
     }
-    
-    publishing {
-        singleVariant("productionRelease") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
 }
 
 jacoco {
@@ -118,7 +113,7 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         "android/**/*.*"
     )
     
-    val debugTree = fileTree("${buildDir}/tmp/kotlin-classes/stagingDebug") {
+    val debugTree = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/stagingDebug")) {
         exclude(fileFilter)
     }
     
@@ -126,7 +121,7 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     
     sourceDirectories.setFrom(files(mainSrc))
     classDirectories.setFrom(files(debugTree))
-    executionData.setFrom(fileTree(buildDir) {
+    executionData.setFrom(fileTree(layout.buildDirectory) {
         include("jacoco/testStagingDebugUnitTest.exec")
     })
 }
@@ -159,60 +154,37 @@ dependencies {
 }
 
 // ============================================
-// Maven Publishing Configuration
+// Maven Publishing Configuration (vanniktech)
 // ============================================
 
-val publishVersion: String = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
-val publishGroupId = "tr.com.mimeda"
-val publishArtifactId = "bidding-mobile-android-sdk"
-
-afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                // Production release variant'ını kullan
-                from(components["productionRelease"])
-                
-                groupId = publishGroupId
-                artifactId = publishArtifactId
-                version = publishVersion
-                
-                pom {
-                    name.set("Mimeda Android SDK")
-                    description.set("Android SDK for Mimeda bidding platform")
-                    url.set("https://github.com/mimeda")
-                    
-                    developers {
-                        developer {
-                            name.set("Mimeda Team")
-                            organization.set("Mimeda")
-                            organizationUrl.set("https://mimeda.com.tr")
-                        }
-                    }
-                }
-            }
-        }
+mavenPublishing {
+    configure(AndroidSingleVariantLibrary(
+        variant = "productionRelease",
+        sourcesJar = true,
+        publishJavadocJar = true
+    ))
+    
+    coordinates(
+        groupId = "tr.com.mimeda",
+        artifactId = "bidding-mobile-android-sdk",
+        version = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
+    )
+    
+    pom {
+        name.set("Mimeda Android SDK")
+        description.set("Android SDK for Mimeda bidding platform")
+        url.set("https://mimeda.com.tr")
         
-        repositories {
-            maven {
-                val isSnapshot = publishVersion.endsWith("-SNAPSHOT") || publishVersion.contains("-beta")
-                val releasesRepoUrl = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-                val snapshotsRepoUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
-                
-                url = if (isSnapshot) snapshotsRepoUrl else releasesRepoUrl
-                
-                credentials {
-                    username = project.findProperty("OSSRH_USERNAME") as String? ?: ""
-                    password = project.findProperty("OSSRH_PASSWORD") as String? ?: ""
-                }
+        developers {
+            developer {
+                name.set("Mimeda Team")
+                organization.set("Mimeda")
+                organizationUrl.set("https://mimeda.com.tr")
             }
         }
     }
     
-    // Signing - useGpgCmd() ile sistem GPG'sini kullanır
-    signing {
-        // CI ortamında GPG key import edilmiş olmalı
-        useGpgCmd()
-        sign(publishing.publications["release"])
-    }
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    
+    signAllPublications()
 }
