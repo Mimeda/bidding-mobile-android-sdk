@@ -178,7 +178,23 @@ jobs:
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
           if [ -n "$SIGNING_KEY" ] && [ -n "$SIGNING_PASSWORD" ]; then
-            echo "$SIGNING_KEY" | base64 --decode | gpg --batch --import
+            # GPG dizinini oluştur
+            mkdir -p ~/.gnupg
+            chmod 700 ~/.gnupg
+            
+            # GPG agent ayarları
+            echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+            echo "use-agent" >> ~/.gnupg/gpg.conf
+            echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+            
+            # GPG agent'ı yeniden başlat
+            gpgconf --kill gpg-agent || true
+            
+            # Key'i import et
+            echo "$SIGNING_KEY" | base64 -d | gpg --batch --import --passphrase "$SIGNING_PASSWORD"
+            
+            # Import edildi mi kontrol et
+            echo "✅ GPG keys imported:"
             gpg --list-secret-keys --keyid-format LONG
           else
             echo "⚠️ GPG signing keys not found, skipping signing"
@@ -199,12 +215,16 @@ jobs:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
           echo "🚀 Publishing version ${{ steps.version.outputs.version }} to ${{ steps.version.outputs.environment }}"
+          
+          # Base64 encoded key'i decode et (ASCII armored format)
+          DECODED_SIGNING_KEY=$(echo "$SIGNING_KEY" | base64 -d)
+          
           ./gradlew :app:publishReleasePublicationToMavenRepository \
             -POSSRH_USERNAME="$OSSRH_USERNAME" \
             -POSSRH_PASSWORD="$OSSRH_PASSWORD" \
             -PSIGNING_KEY_ID="$SIGNING_KEY_ID" \
             -PSIGNING_PASSWORD="$SIGNING_PASSWORD" \
-            -PSIGNING_KEY="$SIGNING_KEY" \
+            -PSIGNING_KEY="$DECODED_SIGNING_KEY" \
             --no-daemon
       
       - name: Create release tag (Production only)
