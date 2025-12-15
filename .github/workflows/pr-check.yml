@@ -198,12 +198,26 @@ jobs:
           BUNDLE_DIR="bundle/${GROUP_PATH}/${ARTIFACT_ID}/${VERSION}"
           mkdir -p "$BUNDLE_DIR"
           
-          # Find and copy AAR
-          AAR_FILE=$(find app/build/outputs/aar -name "*productionRelease*.aar" | head -1)
+          # Debug: List all AAR files
+          echo "📋 Looking for AAR files..."
+          echo "Contents of app/build/outputs/aar (if exists):"
+          ls -la app/build/outputs/aar/ 2>/dev/null || echo "Directory not found"
+          
+          echo "All AAR files in app/build:"
+          find app/build -name "*.aar" -type f 2>/dev/null || echo "No AAR files found"
+          
+          # Find and copy AAR (try multiple patterns)
+          AAR_FILE=$(find app/build/outputs/aar -name "*.aar" 2>/dev/null | head -1)
+          if [ -z "$AAR_FILE" ]; then
+            AAR_FILE=$(find app/build -name "*.aar" -type f 2>/dev/null | head -1)
+          fi
+          
           if [ -z "$AAR_FILE" ]; then
             echo "❌ AAR file not found!"
             exit 1
           fi
+          
+          echo "✅ Found AAR: $AAR_FILE"
           cp "$AAR_FILE" "$BUNDLE_DIR/${ARTIFACT_ID}-${VERSION}.aar"
           echo "✅ AAR copied"
           
