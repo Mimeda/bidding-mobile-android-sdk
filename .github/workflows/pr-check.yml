@@ -172,19 +172,6 @@ jobs:
           echo "Updated MIMEDA_SDK_VERSION to ${{ steps.version.outputs.version }}"
           cat gradle.properties | grep MIMEDA_SDK_VERSION
       
-      - name: Decode GPG key
-        id: gpg
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        run: |
-          # Base64 decode GPG key
-          DECODED_KEY=$(echo "$SIGNING_KEY" | base64 -d)
-          # Multiline output için
-          echo "key<<EOF" >> $GITHUB_OUTPUT
-          echo "$DECODED_KEY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "✅ GPG key decoded"
-      
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       
@@ -195,11 +182,15 @@ jobs:
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSSRH_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ steps.gpg.outputs.key }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY }}
         run: |
           echo "🚀 Publishing version ${{ steps.version.outputs.version }} to ${{ steps.version.outputs.environment }}"
+          
+          # GPG key'i decode edip environment variable olarak export et
+          export ORG_GRADLE_PROJECT_signingInMemoryKey=$(echo "$SIGNING_KEY_BASE64" | base64 -d)
+          
           ./gradlew :app:publishToMavenCentral --no-daemon
       
       - name: Create release tag (Production only)
