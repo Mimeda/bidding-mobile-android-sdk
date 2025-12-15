@@ -206,26 +206,35 @@ jobs:
       - name: Build release AAR
         run: ./gradlew :app:assembleProductionRelease --no-daemon
       
-      - name: Publish to Sonatype Central
+      - name: Setup credentials
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY }}
+        run: |
+          # GPG key'i dosyaya yaz
+          echo "$SIGNING_KEY_BASE64" | base64 -d > /tmp/secring.gpg
+          
+          # Diğer credentials'ları gradle.properties'e ekle
+          echo "" >> gradle.properties
+          echo "OSSRH_USERNAME=$OSSRH_USERNAME" >> gradle.properties
+          echo "OSSRH_PASSWORD=$OSSRH_PASSWORD" >> gradle.properties
+          echo "SIGNING_KEY_ID=$SIGNING_KEY_ID" >> gradle.properties
+          echo "SIGNING_PASSWORD=$SIGNING_PASSWORD" >> gradle.properties
+          echo "SIGNING_KEY_FILE=/tmp/secring.gpg" >> gradle.properties
+          
+          echo "✅ Credentials configured"
+      
+      - name: Publish to Sonatype Central
         run: |
           echo "🚀 Publishing version ${{ steps.version.outputs.version }} to ${{ steps.version.outputs.environment }}"
-          
-          # Base64 encoded key'i decode et (ASCII armored format)
-          DECODED_SIGNING_KEY=$(echo "$SIGNING_KEY" | base64 -d)
-          
-          ./gradlew :app:publishReleasePublicationToMavenRepository \
-            -POSSRH_USERNAME="$OSSRH_USERNAME" \
-            -POSSRH_PASSWORD="$OSSRH_PASSWORD" \
-            -PSIGNING_KEY_ID="$SIGNING_KEY_ID" \
-            -PSIGNING_PASSWORD="$SIGNING_PASSWORD" \
-            -PSIGNING_KEY="$DECODED_SIGNING_KEY" \
-            --no-daemon
+          ./gradlew :app:publishReleasePublicationToMavenRepository --no-daemon
+      
+      - name: Cleanup
+        if: always()
+        run: rm -f /tmp/secring.gpg
       
       - name: Create release tag (Production only)
         if: steps.version.outputs.is_staging == 'false'

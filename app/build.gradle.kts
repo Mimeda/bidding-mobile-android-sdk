@@ -212,11 +212,15 @@ afterEvaluate {
     signing {
         val signingKeyId = project.findProperty("SIGNING_KEY_ID") as String?
         val signingPassword = project.findProperty("SIGNING_PASSWORD") as String?
-        val signingKey = project.findProperty("SIGNING_KEY") as String?
+        val signingKeyFile = project.findProperty("SIGNING_KEY_FILE") as String?
         
-        if (signingKeyId != null && signingPassword != null && signingKey != null) {
-            useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
-            sign(publishing.publications["release"])
+        if (!signingKeyId.isNullOrBlank() && !signingPassword.isNullOrBlank() && !signingKeyFile.isNullOrBlank()) {
+            val keyFile = File(signingKeyFile)
+            if (keyFile.exists()) {
+                val signingKey = keyFile.readText()
+                useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+                sign(publishing.publications["release"])
+            }
         }
     }
 }
