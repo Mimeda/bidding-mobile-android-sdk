@@ -214,16 +214,39 @@ jobs:
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
           SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY }}
         run: |
-          # GPG key'i dosyaya yaz
-          echo "$SIGNING_KEY_BASE64" | base64 -d > /tmp/secring.gpg
+          echo "📋 Checking secrets (lengths only)..."
+          echo "OSSRH_USERNAME: $([ -n "$OSSRH_USERNAME" ] && echo "SET" || echo "MISSING")"
+          echo "OSSRH_PASSWORD: $([ -n "$OSSRH_PASSWORD" ] && echo "SET" || echo "MISSING")"
+          echo "SIGNING_KEY_ID: $([ -n "$SIGNING_KEY_ID" ] && echo "SET (${#SIGNING_KEY_ID} chars)" || echo "MISSING")"
+          echo "SIGNING_PASSWORD: $([ -n "$SIGNING_PASSWORD" ] && echo "SET" || echo "MISSING")"
+          echo "SIGNING_KEY: $([ -n "$SIGNING_KEY_BASE64" ] && echo "SET (${#SIGNING_KEY_BASE64} chars)" || echo "MISSING")"
           
-          # Diğer credentials'ları gradle.properties'e ekle
-          echo "" >> gradle.properties
-          echo "OSSRH_USERNAME=$OSSRH_USERNAME" >> gradle.properties
-          echo "OSSRH_PASSWORD=$OSSRH_PASSWORD" >> gradle.properties
-          echo "SIGNING_KEY_ID=$SIGNING_KEY_ID" >> gradle.properties
-          echo "SIGNING_PASSWORD=$SIGNING_PASSWORD" >> gradle.properties
-          echo "SIGNING_KEY_FILE=/tmp/secring.gpg" >> gradle.properties
+          # GPG key'i dosyaya yaz (base64 decode)
+          echo "$SIGNING_KEY_BASE64" | base64 -d > /tmp/secring.gpg 2>/dev/null || {
+            echo "⚠️ Base64 decode failed, trying direct write..."
+            echo "$SIGNING_KEY_BASE64" > /tmp/secring.gpg
+          }
+          
+          # Key formatını kontrol et (içeriği göstermeden)
+          KEY_SIZE=$(wc -c < /tmp/secring.gpg)
+          echo "Key file size: $KEY_SIZE bytes"
+          
+          if head -1 /tmp/secring.gpg | grep -q "BEGIN PGP"; then
+            echo "✅ Key format: ASCII armored (correct)"
+          else
+            echo "❌ Key format: NOT ASCII armored (wrong!)"
+            echo "First line starts with: $(head -1 /tmp/secring.gpg | head -c 20)..."
+          fi
+          
+          # Credentials'ları gradle.properties'e ekle
+          {
+            echo ""
+            echo "OSSRH_USERNAME=$OSSRH_USERNAME"
+            echo "OSSRH_PASSWORD=$OSSRH_PASSWORD"
+            echo "SIGNING_KEY_ID=$SIGNING_KEY_ID"
+            echo "SIGNING_PASSWORD=$SIGNING_PASSWORD"
+            echo "SIGNING_KEY_FILE=/tmp/secring.gpg"
+          } >> gradle.properties
           
           echo "✅ Credentials configured"
       
