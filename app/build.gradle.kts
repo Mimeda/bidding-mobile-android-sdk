@@ -23,7 +23,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Configuration values - gradle.properties'ten override edilebilir
         val sdkVersion = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
         val connectTimeout = (project.findProperty("MIMEDA_CONNECT_TIMEOUT") as String?)?.toLongOrNull() ?: 10L
         val readTimeout = (project.findProperty("MIMEDA_READ_TIMEOUT") as String?)?.toLongOrNull() ?: 30L
@@ -32,7 +31,6 @@ android {
         val maxRetries = (project.findProperty("MIMEDA_MAX_RETRIES") as String?)?.toIntOrNull() ?: 3
         val retryBaseDelayMs = (project.findProperty("MIMEDA_RETRY_BASE_DELAY_MS") as String?)?.toLongOrNull() ?: 1000L
 
-        // BuildConfig field'ları (URL'ler productFlavors'da tanımlı)
         buildConfigField("String", "SDK_VERSION", "\"$sdkVersion\"")
         buildConfigField("long", "CONNECT_TIMEOUT_SECONDS", "${connectTimeout}L")
         buildConfigField("long", "READ_TIMEOUT_SECONDS", "${readTimeout}L")
@@ -45,7 +43,6 @@ android {
     productFlavors {
         create("production") {
             dimension = "environment"
-            // Her build'de her iki environment URL'i de mevcut olmalı (runtime seçimi için)
             buildConfigField("String", "PRODUCTION_EVENT_BASE_URL", "\"https://event.mlink.com.tr\"")
             buildConfigField("String", "PRODUCTION_PERFORMANCE_BASE_URL", "\"https://performance.mlink.com.tr\"")
             buildConfigField("String", "STAGING_EVENT_BASE_URL", "\"https://bidding-eventcollector-stage.azurewebsites.net\"")
@@ -54,7 +51,6 @@ android {
 
         create("staging") {
             dimension = "environment"
-            // Her build'de her iki environment URL'i de mevcut olmalı (runtime seçimi için)
             buildConfigField("String", "PRODUCTION_EVENT_BASE_URL", "\"https://event.mlink.com.tr\"")
             buildConfigField("String", "PRODUCTION_PERFORMANCE_BASE_URL", "\"https://performance.mlink.com.tr\"")
             buildConfigField("String", "STAGING_EVENT_BASE_URL", "\"https://bidding-eventcollector-stage.azurewebsites.net\"")
@@ -63,16 +59,13 @@ android {
     }
 
     buildTypes {
-        debug {
-            // Debug build type için BuildConfig field'ları defaultConfig'ten devralınır
-        }
+        debug { }
         release {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Release build type için BuildConfig field'ları defaultConfig'ten devralınır
         }
     }
     compileOptions {
@@ -127,20 +120,13 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 }
 
 dependencies {
-    // Core Android
     implementation("androidx.core:core-ktx:1.17.0")
-    
-    // Security - EncryptedSharedPreferences
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     
-    // HTTP Client
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    api("com.squareup.okhttp3:okhttp:4.12.0")
+    api("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    api("com.google.code.gson:gson:2.10.1")
     
-    // JSON Parsing
-    implementation("com.google.code.gson:gson:2.10.1")
-    
-    // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:5.0.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.0.0")
@@ -155,10 +141,6 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit-ktx:1.3.0")
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
-
-// ============================================
-// Maven Publishing Configuration (vanniktech)
-// ============================================
 
 mavenPublishing {
     configure(AndroidSingleVariantLibrary(

@@ -62,10 +62,6 @@ internal class EventTracker(
         }
     }
 
-    /**
-     * EventParams'ı validate ve sanitize eder.
-     * @return Sanitize edilmiş EventParams veya null (validation hatası varsa)
-     */
     private fun validateAndSanitizeParams(
         eventName: EventName,
         params: EventParams
@@ -100,10 +96,6 @@ internal class EventTracker(
         )
     }
 
-    /**
-     * PerformanceEventParams'ı validate ve sanitize eder.
-     * @return Sanitize edilmiş PerformanceEventParams veya null (validation hatası varsa)
-     */
     private fun validateAndSanitizePerformanceParams(
         params: PerformanceEventParams
     ): PerformanceEventParams? {

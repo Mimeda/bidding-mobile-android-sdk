@@ -122,12 +122,6 @@ object MimedaSDK {
         return isInitialized
     }
 
-    /**
-     * SDK debug logging'ini runtime'da açıp kapatır.
-     * Not: Sadece debug build'lerde çalışır, release build'lerde her zaman kapalıdır.
-     * 
-     * @param enabled true ise logging açık, false ise kapalı
-     */
     fun setDebugLogging(enabled: Boolean) {
         Logger.setDebugLogging(enabled)
     }
