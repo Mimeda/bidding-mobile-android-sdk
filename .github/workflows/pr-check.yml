@@ -376,11 +376,8 @@ jobs:
           AUTH_TOKEN=$(echo -n "${OSSRH_USERNAME}:${OSSRH_PASSWORD}" | base64)
           
           # Upload bundle
-          # publishingType: AUTOMATIC for auto-publish, USER_MANAGED for manual
-          PUBLISHING_TYPE="AUTOMATIC"
-          if [ "$ENVIRONMENT" == "staging" ]; then
-            PUBLISHING_TYPE="USER_MANAGED"  # Beta versions need manual approval
-          fi
+          # publishingType: USER_MANAGED requires manual approval on Sonatype Central Portal
+          PUBLISHING_TYPE="USER_MANAGED"
           
           RESPONSE=$(curl --request POST \
             --silent \
