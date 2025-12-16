@@ -362,15 +362,62 @@ jobs:
           cd ..
           echo "bundle_path=central-bundle.zip" >> $GITHUB_OUTPUT
       
-      - name: Upload to Sonatype Central
+      - name: Publish to Sonatype Central (Snapshot)
+        if: steps.version.outputs.is_staging == 'true'
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          echo "🚀 Publishing SNAPSHOT version $VERSION to Central Portal Snapshots..."
+          
+          # Import GPG key for signing
+          if echo "$SIGNING_KEY" | base64 -d 2>/dev/null | gpg --batch --import 2>/dev/null; then
+            echo "✅ GPG key imported (was base64 encoded)"
+          elif echo "$SIGNING_KEY" | gpg --batch --import 2>/dev/null; then
+            echo "✅ GPG key imported (was raw ASCII)"
+          else
+            echo "❌ Failed to import GPG key"
+            exit 1
+          fi
+          
+          # Configure Gradle properties for snapshot repository
+          cat >> gradle.properties << EOF
+          OSSRH_USERNAME=$OSSRH_USERNAME
+          OSSRH_PASSWORD=$OSSRH_PASSWORD
+          EOF
+          
+          # Verify credentials are set
+          echo "Checking credentials..."
+          if [ -z "$OSSRH_USERNAME" ] || [ -z "$OSSRH_PASSWORD" ]; then
+            echo "❌ Credentials not set!"
+            exit 1
+          fi
+          echo "✅ Credentials configured (username length: ${#OSSRH_USERNAME}, password length: ${#OSSRH_PASSWORD})"
+          
+          # Publish to snapshot repository using Gradle
+          # Export credentials as environment variables for Gradle
+          export OSSRH_USERNAME
+          export OSSRH_PASSWORD
+          
+          ./gradlew :app:publishCentralPortalSnapshotsPublicationToMavenRepository --no-daemon || \
+          ./gradlew :app:publish --no-daemon
+          
+          echo "✅ SNAPSHOT published successfully!"
+      
+      - name: Upload to Sonatype Central (Release)
+        if: steps.version.outputs.is_staging == 'false'
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          ENVIRONMENT="${{ steps.version.outputs.environment }}"
           
-          echo "🚀 Uploading version $VERSION to Sonatype Central..."
+          echo "🚀 Uploading RELEASE version $VERSION to Sonatype Central..."
           
           # Create auth token (base64 of username:password)
           AUTH_TOKEN=$(echo -n "${OSSRH_USERNAME}:${OSSRH_PASSWORD}" | base64)

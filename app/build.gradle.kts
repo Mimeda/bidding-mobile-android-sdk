@@ -143,6 +143,9 @@ dependencies {
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
 
+val sdkVersion = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
+val isSnapshot = sdkVersion.endsWith("-SNAPSHOT")
+
 mavenPublishing {
     configure(AndroidSingleVariantLibrary(
         variant = "productionRelease",
@@ -153,7 +156,7 @@ mavenPublishing {
     coordinates(
         groupId = "tr.com.mimeda",
         artifactId = "bidding-mobile-android-sdk",
-        version = project.findProperty("MIMEDA_SDK_VERSION") as String? ?: "1.0.0"
+        version = sdkVersion
     )
     
     pom {
@@ -170,7 +173,32 @@ mavenPublishing {
         }
     }
     
-    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    if (!isSnapshot) {
+        publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    }
     
     signAllPublications()
+}
+
+// Snapshot repository configuration
+if (isSnapshot) {
+    afterEvaluate {
+        publishing {
+            repositories {
+                maven {
+                    name = "CentralPortalSnapshots"
+                    url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+                    credentials {
+                        username = project.findProperty("OSSRH_USERNAME") as String? 
+                            ?: System.getenv("OSSRH_USERNAME") ?: ""
+                        password = project.findProperty("OSSRH_PASSWORD") as String? 
+                            ?: System.getenv("OSSRH_PASSWORD") ?: ""
+                    }
+                    authentication {
+                        create<org.gradle.authentication.http.BasicAuthentication>("basic")
+                    }
+                }
+            }
+        }
+    }
 }
