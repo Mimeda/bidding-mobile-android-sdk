@@ -235,7 +235,7 @@ Mimeda Bidding Android SDK, Mimeda bidding platformu için geliştirilmiş, even
 - Performance Monitoring: Reklam performans metriklerini izleme
 - Güvenli Depolama: EncryptedSharedPreferences ile hassas verilerin güvenli saklanması
 - Input Validation: Otomatik veri doğrulama ve sanitization
-- Retry Mechanism: Ağ hatalarında otomatik yeniden deneme
+- Automatic Retry: Ağ hatalarında otomatik yeniden deneme
 - Thread Safety: Thread-safe singleton yapısı
 
 ---
@@ -299,12 +299,12 @@ Event'leri yöneten ve API'ye gönderen sınıftır.
 HTTP isteklerini yöneten ve API ile iletişim kuran sınıftır.
 
 **Özellikler:**
-- Retry mechanism (exponential backoff)
+- Automatic Retry (exponential backoff)
 - Environment bazlı URL yönetimi (Production/Staging)
 - Query parameter validation
 - Error handling ve callback desteği
 
-**Retry Mekanizması:**
+**Automatic Retry:**
 - Maksimum retry sayısı: `MAX_RETRIES` (varsayılan: 3)
 - Retry delay: Exponential backoff (base delay: `RETRY_BASE_DELAY_MS`, varsayılan: 1000ms)
 - Retry durumları: Network hataları, timeout'lar, 5xx server hataları
@@ -455,7 +455,7 @@ Cihaz bilgilerini toplayan utility sınıfıdır.
 - UI thread'i asla bloklanmaz
 - Single-threaded executor ile sıralama korunur
 
-**2. Retry Mekanizması:**
+**2. Automatic Retry:**
 - Exponential backoff ile akıllı retry
 - Network hatalarında otomatik yeniden deneme
 - Timeout yönetimi
@@ -581,7 +581,7 @@ Cihaz bilgilerini toplayan utility sınıfıdır.
 #### Minimum Gereksinimler
 
 - **Minimum SDK:** Android 7.0 (API 24)
-- **Target SDK:** Android 14+ (API 36+)
+- **Target SDK:** Latest stable Android SDK
 - **Kotlin:** 1.9.0+
 - **Java:** 11+
 - **Gradle:** 8.0+

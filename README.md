@@ -31,8 +31,8 @@ Mimeda Android SDK, Mimeda bidding platformu için geliştirilmiş, event tracki
 - **Performance Monitoring**: Reklam performans metriklerini izleyin
 - **Güvenli Depolama**: EncryptedSharedPreferences ile hassas verilerin güvenli saklanması
 - **Input Validation**: Otomatik veri doğrulama ve sanitization
-- **Hafif ve Optimize**: ProGuard/R8 ile optimize edilmiş, minimal boyut
-- **Retry Mechanism**: Ağ hatalarında otomatik yeniden deneme
+- **Hafif ve Optimize Edilmiş**: ProGuard/R8 ile optimize edilmiş, minimal boyut
+- **Automatic Retry**: Ağ hatalarında otomatik yeniden deneme
 - **Debug Logging**: Geliştirme sırasında detaylı log desteği
 - **Environment Support**: Production ve Staging ortamları desteği
 
@@ -150,7 +150,7 @@ MimedaSDK.trackEvent(
     eventParameter = EventParameter.ADD_TO_CART,
     params = EventParams(
         lineItemIds = "item123",
-        productList = "sku456"
+        productList = "SKU456:1:99.99"
     )
 )
 
@@ -160,7 +160,7 @@ MimedaSDK.trackEvent(
     eventParameter = EventParameter.ADD_TO_FAVORITES,
     params = EventParams(
         lineItemIds = "item123",
-        productList = "sku456"
+        productList = "SKU456:1:99.99"
     )
 )
 
@@ -181,7 +181,7 @@ MimedaSDK.trackEvent(
     params = EventParams(
         categoryId = "electronics",
         lineItemIds = "item123",
-        productList = "sku456"
+        productList = "SKU456:1:99.99"
     )
 )
 
@@ -192,7 +192,7 @@ MimedaSDK.trackEvent(
     params = EventParams(
         categoryId = "electronics",
         lineItemIds = "item123",
-        productList = "sku456"
+        productList = "SKU456:1:99.99"
     )
 )
 
@@ -213,7 +213,7 @@ MimedaSDK.trackEvent(
     params = EventParams(
         keyword = "elektronik",
         lineItemIds = "item123",
-        productList = "sku456"
+        productList = "SKU456:1:99.99"
     )
 )
 
@@ -224,7 +224,7 @@ MimedaSDK.trackEvent(
     params = EventParams(
         keyword = "elektronik",
         lineItemIds = "item123",
-        productList = "sku456"
+        productList = "SKU456:1:99.99"
     )
 )
 
@@ -234,7 +234,7 @@ MimedaSDK.trackEvent(
     eventParameter = EventParameter.VIEW,
     params = EventParams(
         lineItemIds = "item123",
-        productList = "sku456"
+        productList = "SKU456:1:99.99"
     )
 )
 
@@ -244,7 +244,7 @@ MimedaSDK.trackEvent(
     eventParameter = EventParameter.ADD_TO_CART,
     params = EventParams(
         lineItemIds = "item123",
-        productList = "sku456"
+        productList = "SKU456:1:99.99"
     )
 )
 
@@ -254,7 +254,7 @@ MimedaSDK.trackEvent(
     eventParameter = EventParameter.ADD_TO_FAVORITES,
     params = EventParams(
         lineItemIds = "item123",
-        productList = "sku456"
+        productList = "SKU456:1:99.99"
     )
 )
 
@@ -264,7 +264,7 @@ MimedaSDK.trackEvent(
     eventParameter = EventParameter.VIEW,
     params = EventParams(
         lineItemIds = "item123,item456",
-        productList = "sku456,sku789"
+        productList = "SKU456:1:99.99,SKU789:2:149.99"
     )
 )
 
@@ -275,7 +275,7 @@ MimedaSDK.trackEvent(
     params = EventParams(
         transactionId = "txn789",
         lineItemIds = "item123,item456",
-        productList = "sku456,sku789"
+        productList = "SKU456:1:99.99,SKU789:2:149.99"
     )
 )
 ```
@@ -317,7 +317,7 @@ MimedaSDK.trackPerformanceClick(
 
 ### MimedaSDK
 
-Ana SDK sınıfı. Tüm işlemler bu singleton üzerinden yapılır.
+Ana SDK sınıfı. Tüm işlemler bu singleton üzerinden yapılır. SDK yalnızca bir kez initialize edilmelidir. Tekrar initialize edilirse çağrı yok sayılır.
 
 #### `initialize()`
 
@@ -514,8 +514,6 @@ Bu parametreler SDK tarafından otomatik olarak oluşturulur ve her event'te gö
 | `d` | `deviceId` | Cihaz ID (Android ID veya UUID) | Evet |
 | `os` | `os` | İşletim sistemi (her zaman "Android") | Evet |
 | `lng` | `language` | Cihaz dili ve ülke kodu (örn: "tr-TR", "en-US") | Evet |
-| `en` | `eventName` | Event adı (home, listing, search, pdp, cart, purchase) | Evet |
-| `ep` | `eventParameter` | Event parametresi (view, addtocart, addtofavorites, success) | Evet |
 | `tid` | `traceId` | Her event için benzersiz trace ID (UUID) | Evet |
 | `s` | `sessionId` | Oturum ID (30 dakika geçerlilik süresi, otomatik yenilenir) | Evet |
 | `aid` | `anonymousId` | Anonim kullanıcı ID| Evet |
@@ -534,6 +532,8 @@ Bu parametreler `EventParams` data class'ı üzerinden kullanıcı tarafından s
 | `lc` | `loyaltyCard` | loyaltyCard numarası | Hayır |
 | `trans` | `transactionId` | İşlem ID (purchase event'lerinde kullanılır) | Hayır |
 | `trc` | `totalRowCount` | Toplam satır sayısı (listing event'lerinde kullanılır) | Hayır |
+| `en` | `eventName` | Event adı | Evet |
+| `ep` | `eventParameter` | Event parametresi | Evet |
 
 ### Performance Tracking Parametreleri
 
@@ -572,7 +572,7 @@ Bu parametreler `PerformanceEventParams` data class'ı üzerinden kullanıcı ta
 **Notlar:**
 - Session ID (`s`): 30 dakika geçerlilik süresi vardır. 30 dakika boyunca kullanıcı etkileşimde bulunmazsa yeni bir session ID oluşturulur.
 - Anonymous ID (`aid`): Cihaz bazlıdır ve güvenli depolamada saklanır. Uygulama silinmedikçe aynı kalır.
-- Device ID (`d`): Android ID kullanılır. Eğer Android ID alınamazsa UUID oluşturulur.
+- Device ID (`d`): Android ID kullanılır. Android ID erişilemezse SDK tarafından UUID üretilir.
 - Trace ID (`tid`): Her event için benzersiz bir UUID oluşturulur.
 
 ## Debug Logging
@@ -584,10 +584,9 @@ MimedaSDK.setDebugLogging(true)
 ```
 
 **Önemli Notlar:**
-- Debug logging, release build'lerde de çalışır (eğer `setDebugLogging(true)` çağrılırsa)
+- Debug logging, release build'lerde de teknik olarak çalışabilir, ancak production ortamlarında kesinlikle açık bırakılmamalıdır. (eğer `setDebugLogging(true)` çağrılırsa)
 - Production build'lerde varsayılan olarak kapalıdır
 - Loglar `MimedaSDK` tag'i ile Logcat'te görüntülenir
-- Production'da debug logging'i açık bırakılmamalıdır
 
 ## ProGuard Kuralları
 
@@ -692,7 +691,7 @@ Versiyon artırma örnekleri (Semantic Versioning):
 ### PR Workflow
 
 1. **PR Açma:**
-   - PR'lar `main`, `master` veya `staging` branch'lerine açılabilir
+   - PR'lar `main`, `master` veya `staging` branch'lerine açılmalıdır.
    - PR açıldığında otomatik olarak şu job'lar çalışır:
      - `build-and-test`: Proje build edilir, unit testler çalıştırılır, coverage raporu oluşturulur
      - `lint`: Kod kalitesi kontrolü yapılır

@@ -20,7 +20,7 @@
 - Debug logging desteği
   - Runtime debug logging kontrolü
   - Logcat entegrasyonu
-- Retry mechanism
+- Automatic Retry
   - Ağ hatalarında otomatik yeniden deneme
   - Exponential backoff
 - Environment support
@@ -34,5 +34,5 @@
 ### Security
 - EncryptedSharedPreferences ile hassas veri saklama
 - Input sanitization ve validation
-- ProGuard obfuscation
+- ProGuard / R8 Obfuscation
 
