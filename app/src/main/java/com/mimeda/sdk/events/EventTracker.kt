@@ -1,7 +1,6 @@
 package com.mimeda.sdk.events
 
 import android.content.Context
-import com.mimeda.sdk.MimedaSDKErrorCallback
 import com.mimeda.sdk.api.ApiService
 import com.mimeda.sdk.utils.DeviceInfo
 import com.mimeda.sdk.utils.InputValidator
@@ -12,8 +11,7 @@ import java.util.concurrent.TimeUnit
 
 internal class EventTracker(
     private val apiService: ApiService,
-    private val context: Context,
-    private val errorCallback: MimedaSDKErrorCallback? = null
+    private val context: Context
 ) {
     private val executor = Executors.newSingleThreadExecutor()
     
@@ -62,28 +60,7 @@ internal class EventTracker(
         }
     }
 
-    private fun validateAndSanitizeParams(
-        eventName: EventName,
-        params: EventParams
-    ): EventParams? {
-        // Validation
-        val errors = InputValidator.validateEventParams(
-            userId = params.userId,
-            lineItemIds = params.lineItemIds,
-            productList = params.productList,
-            categoryId = params.categoryId,
-            keyword = params.keyword,
-            loyaltyCard = params.loyaltyCard,
-            transactionId = params.transactionId
-        )
-        
-        if (errors.isNotEmpty()) {
-            Logger.e("Event validation failed: ${errors.joinToString(", ")}")
-            errorCallback?.onValidationFailed(eventName, errors)
-            return null
-        }
-        
-        // Sanitization
+    private fun sanitizeParams(params: EventParams): EventParams {
         return EventParams(
             userId = InputValidator.sanitizeUserId(params.userId),
             lineItemIds = InputValidator.sanitizeString(params.lineItemIds),
@@ -96,33 +73,13 @@ internal class EventTracker(
         )
     }
 
-    private fun validateAndSanitizePerformanceParams(
-        params: PerformanceEventParams
-    ): PerformanceEventParams? {
-        // Validation
-        val errors = InputValidator.validatePerformanceEventParams(
-            lineItemId = params.lineItemId,
-            creativeId = params.creativeId,
-            adUnit = params.adUnit,
-            productSku = params.productSku,
-            payload = params.payload,
-            keyword = params.keyword,
-            userId = params.userId
-        )
-        
-        if (errors.isNotEmpty()) {
-            Logger.e("Performance event validation failed: ${errors.joinToString(", ")}")
-            errorCallback?.onValidationFailed(null, errors)
-            return null
-        }
-        
-        // Sanitization
+    private fun sanitizePerformanceParams(params: PerformanceEventParams): PerformanceEventParams {
         return PerformanceEventParams(
-            lineItemId = InputValidator.sanitizeString(params.lineItemId) ?: params.lineItemId,
-            creativeId = InputValidator.sanitizeString(params.creativeId) ?: params.creativeId,
-            adUnit = InputValidator.sanitizeString(params.adUnit) ?: params.adUnit,
-            productSku = InputValidator.sanitizeString(params.productSku) ?: params.productSku,
-            payload = InputValidator.sanitizePayload(params.payload) ?: params.payload,
+            lineItemId = InputValidator.sanitizeString(params.lineItemId),
+            creativeId = InputValidator.sanitizeString(params.creativeId),
+            adUnit = InputValidator.sanitizeString(params.adUnit),
+            productSku = InputValidator.sanitizeString(params.productSku),
+            payload = InputValidator.sanitizePayload(params.payload),
             keyword = InputValidator.sanitizeKeyword(params.keyword),
             userId = InputValidator.sanitizeUserId(params.userId)
         )
@@ -135,12 +92,7 @@ internal class EventTracker(
         eventType: EventType
     ) {
         try {
-            // Validate and sanitize params
-            val sanitizedParams = validateAndSanitizeParams(eventName, params)
-            if (sanitizedParams == null) {
-                Logger.e("Event tracking aborted due to validation errors")
-                return
-            }
+            val sanitizedParams = sanitizeParams(params)
             
             executor.execute {
                 try {
@@ -173,12 +125,7 @@ internal class EventTracker(
         params: PerformanceEventParams
     ) {
         try {
-            // Validate and sanitize params
-            val sanitizedParams = validateAndSanitizePerformanceParams(params)
-            if (sanitizedParams == null) {
-                Logger.e("Performance event tracking aborted due to validation errors")
-                return
-            }
+            val sanitizedParams = sanitizePerformanceParams(params)
             
             executor.execute {
                 try {

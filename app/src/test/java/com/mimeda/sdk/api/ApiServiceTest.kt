@@ -85,25 +85,6 @@ class ApiServiceTest {
     }
     
     @Test
-    fun testValidationFailure() {
-        val result = apiService.trackEvent(
-            EventName.HOME,
-            EventParameter.VIEW,
-            EventParams(),
-            EventType.EVENT,
-            "",
-            "test-device",
-            "Android",
-            "tr-TR",
-            "test-session",
-            "test-anonymous"
-        )
-        
-        assertTrue(result)
-        assertEquals(0, mockServer.requestCount)
-    }
-    
-    @Test
     fun testServerErrorResponse() {
         mockServer.enqueue(MockResponse().setResponseCode(500))
         mockServer.enqueue(MockResponse().setResponseCode(500))
@@ -267,31 +248,6 @@ class ApiServiceTest {
     }
     
     @Test
-    fun testPerformanceEventValidationFailure() {
-        val params = PerformanceEventParams(
-            lineItemId = "",
-            creativeId = "277",
-            adUnit = "test-ad-unit",
-            productSku = "SKU123",
-            payload = "test-payload"
-        )
-        
-        val result = apiService.trackPerformanceEvent(
-            PerformanceEventType.IMPRESSION,
-            params,
-            "test-app",
-            "test-device",
-            "Android",
-            "tr-TR",
-            "test-session",
-            "test-anonymous"
-        )
-        
-        assertTrue(result)
-        assertEquals(0, mockServer.requestCount)
-    }
-    
-    @Test
     fun testPerformanceEventWithOptionalParams() {
         mockServer.enqueue(MockResponse().setResponseCode(200))
         
@@ -325,7 +281,30 @@ class ApiServiceTest {
     }
     
     @Test
-    fun testValidationMissingSessionId() {
+    fun testPerformanceEventWithEmptyParams() {
+        mockServer.enqueue(MockResponse().setResponseCode(200))
+        
+        val params = PerformanceEventParams()
+        
+        val result = apiService.trackPerformanceEvent(
+            PerformanceEventType.IMPRESSION,
+            params,
+            "test-app",
+            "test-device",
+            "Android",
+            "tr-TR",
+            "test-session",
+            "test-anonymous"
+        )
+        
+        assertTrue(result)
+        assertEquals(1, mockServer.requestCount)
+    }
+    
+    @Test
+    fun testEventWithEmptySessionAndAnonymousId() {
+        mockServer.enqueue(MockResponse().setResponseCode(200))
+        
         val result = apiService.trackEvent(
             EventName.HOME,
             EventParameter.VIEW,
@@ -336,30 +315,11 @@ class ApiServiceTest {
             "Android",
             "tr-TR",
             "",
-            "test-anonymous"
-        )
-        
-        assertTrue(result)
-        assertEquals(0, mockServer.requestCount)
-    }
-    
-    @Test
-    fun testValidationMissingAnonymousId() {
-        val result = apiService.trackEvent(
-            EventName.HOME,
-            EventParameter.VIEW,
-            EventParams(),
-            EventType.EVENT,
-            "test-app",
-            "test-device",
-            "Android",
-            "tr-TR",
-            "test-session",
             ""
         )
         
         assertTrue(result)
-        assertEquals(0, mockServer.requestCount)
+        assertEquals(1, mockServer.requestCount)
     }
     
     @Test
@@ -378,11 +338,6 @@ class ApiServiceTest {
             override fun onPerformanceEventTrackingFailed(
                 eventType: PerformanceEventType,
                 error: Throwable
-            ) {}
-            
-            override fun onValidationFailed(
-                eventName: EventName?,
-                errors: List<String>
             ) {}
         }
         
@@ -413,4 +368,3 @@ class ApiServiceTest {
         assertNotNull(productionService)
     }
 }
-

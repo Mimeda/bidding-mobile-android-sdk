@@ -54,7 +54,7 @@ object MimedaSDK {
             val client = ApiClient.createClient(apiKey, appPackageName)
             val apiService = ApiService(client, environment, errorCallback)
             val applicationContext = context.applicationContext
-            eventTracker = EventTracker(apiService, applicationContext, errorCallback)
+            eventTracker = EventTracker(apiService, applicationContext)
 
             isInitialized = true
             Logger.s("MimedaSDK initialized successfully. Package: $appPackageName, Environment: $environment")
@@ -131,10 +131,10 @@ object MimedaSDK {
         try {
             eventTracker?.shutdown()
             eventTracker = null
+            errorCallback = null
             isInitialized = false
         } catch (e: Exception) {
             Logger.e("An error occurred while shutting down MimedaSDK", e)
         }
     }
 }
-

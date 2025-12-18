@@ -15,11 +15,6 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.UUID
 
-private sealed class ValidationResult {
-    object Success : ValidationResult()
-    data class Failure(val errors: List<String>) : ValidationResult()
-}
-
 internal class ApiService(
     private val client: okhttp3.OkHttpClient,
     private val environment: Environment,
@@ -45,67 +40,6 @@ internal class ApiService(
         return when (eventType) {
             EventType.EVENT -> eventBaseUrl
             EventType.PERFORMANCE -> performanceBaseUrl
-        }
-    }
-    
-    private fun validateEventParams(
-        eventName: EventName,
-        eventParameter: EventParameter,
-        params: EventParams,
-        appName: String,
-        deviceId: String,
-        os: String,
-        language: String,
-        sessionId: String?,
-        anonymousId: String?
-    ): ValidationResult {
-        val errors = mutableListOf<String>()
-        
-        if (sdkVersion.isBlank()) errors.add("v (SdkVersion) is required")
-        if (appName.isBlank()) errors.add("app (AppId) is required")
-        if (deviceId.isBlank()) errors.add("d (DeviceId) is required")
-        if (os.isBlank()) errors.add("os (Os) is required")
-        if (language.isBlank()) errors.add("lng (Language) is required")
-        if (sessionId.isNullOrBlank()) errors.add("s (SessionId) is required")
-        if (anonymousId.isNullOrBlank()) errors.add("aid (AnonymousId) is required")
-        if (eventName.value.isBlank()) errors.add("en (EventName) is required")
-        if (eventParameter.value.isBlank()) errors.add("ep (EventParameter) is required")
-        
-        return if (errors.isEmpty()) {
-            ValidationResult.Success
-        } else {
-            ValidationResult.Failure(errors)
-        }
-    }
-    
-    private fun validatePerformanceEventParams(
-        params: PerformanceEventParams,
-        appName: String,
-        deviceId: String,
-        os: String,
-        language: String,
-        sessionId: String?,
-        anonymousId: String?
-    ): ValidationResult {
-        val errors = mutableListOf<String>()
-        
-        if (sdkVersion.isBlank()) errors.add("v (SdkVersion) is required")
-        if (appName.isBlank()) errors.add("app (AppId) is required")
-        if (deviceId.isBlank()) errors.add("d (DeviceId) is required")
-        if (os.isBlank()) errors.add("os (Os) is required")
-        if (language.isBlank()) errors.add("lng (Language) is required")
-        if (sessionId.isNullOrBlank()) errors.add("s (SessionId) is required")
-        if (anonymousId.isNullOrBlank()) errors.add("aid (AnonymousId) is required")
-        if (params.lineItemId.isBlank()) errors.add("li (LineItemId) is required")
-        if (params.creativeId.isBlank()) errors.add("c (CreativeId) is required")
-        if (params.adUnit.isBlank()) errors.add("au (AdUnit) is required")
-        if (params.productSku.isBlank()) errors.add("psku (ProductSku) is required")
-        if (params.payload.isBlank()) errors.add("pyl (Payload) is required")
-        
-        return if (errors.isEmpty()) {
-            ValidationResult.Success
-        } else {
-            ValidationResult.Failure(errors)
         }
     }
     
@@ -244,22 +178,6 @@ internal class ApiService(
         anonymousId: String?
     ): Boolean {
         return try {
-            val validationResult = validateEventParams(
-                eventName, eventParameter, params,
-                appName, deviceId, os, language, sessionId, anonymousId
-            )
-            
-            if (validationResult is ValidationResult.Failure) {
-                val errorMessage = "Event validation failed. Event: ${eventName.value}/${eventParameter.value}, Errors: ${validationResult.errors.joinToString(", ")}"
-                Logger.e(errorMessage)
-                try {
-                    errorCallback?.onValidationFailed(eventName, validationResult.errors)
-                } catch (e: Exception) {
-                    Logger.e("Error in validation callback", e)
-                }
-                return true
-            }
-            
             val baseUrl = getBaseUrl(eventType)
             val queryParams = buildQueryParams(
                 eventName, eventParameter, params,
@@ -305,11 +223,11 @@ internal class ApiService(
         val traceId = UUID.randomUUID().toString()
         
         queryParams["v"] = sdkVersion
-        queryParams["li"] = params.lineItemId
-        queryParams["c"] = params.creativeId
-        queryParams["au"] = params.adUnit
-        queryParams["psku"] = params.productSku
-        queryParams["pyl"] = params.payload
+        params.lineItemId?.let { queryParams["li"] = it }
+        params.creativeId?.let { queryParams["c"] = it }
+        params.adUnit?.let { queryParams["au"] = it }
+        params.productSku?.let { queryParams["psku"] = it }
+        params.payload?.let { queryParams["pyl"] = it }
         queryParams["t"] = System.currentTimeMillis().toString()
         queryParams["os"] = os
         queryParams["app"] = appName
@@ -343,21 +261,6 @@ internal class ApiService(
         anonymousId: String?
     ): Boolean {
         return try {
-            val validationResult = validatePerformanceEventParams(
-                params, appName, deviceId, os, language, sessionId, anonymousId
-            )
-            
-            if (validationResult is ValidationResult.Failure) {
-                val errorMessage = "Performance event validation failed. Event Type: $eventType, Errors: ${validationResult.errors.joinToString(", ")}"
-                Logger.e(errorMessage)
-                try {
-                    errorCallback?.onValidationFailed(null, validationResult.errors)
-                } catch (e: Exception) {
-                    Logger.e("Error in validation callback", e)
-                }
-                return true
-            }
-            
             val endpoint = getPerformanceEndpoint(eventType)
             val queryParams = buildPerformanceQueryParams(
                 params, appName, deviceId, os, language, sessionId, anonymousId
@@ -399,4 +302,3 @@ internal class ApiService(
         }
     }
 }
-
