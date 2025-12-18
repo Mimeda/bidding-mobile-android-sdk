@@ -30,7 +30,7 @@ Mimeda Android SDK, Mimeda bidding platformu için geliştirilmiş, event tracki
 - **Event Tracking**: Kullanıcı etkileşimlerini takip edin
 - **Performance Monitoring**: Reklam performans metriklerini izleyin
 - **Güvenli Depolama**: EncryptedSharedPreferences ile hassas verilerin güvenli saklanması
-- **Input Validation**: Otomatik veri doğrulama ve sanitization
+- **Input Sanitization**: Otomatik veri temizleme (XSS, HTML tag, SQL injection koruması)
 - **Hafif ve Optimize Edilmiş**: ProGuard/R8 ile optimize edilmiş, minimal boyut
 - **Automatic Retry**: Ağ hatalarında otomatik yeniden deneme
 - **Debug Logging**: Geliştirme sırasında detaylı log desteği
@@ -422,23 +422,23 @@ data class EventParams(
 
 ### PerformanceEventParams
 
-Performance event parametreleri için data class:
+Performance event parametreleri için data class. Tüm alanlar opsiyoneldir, validasyon backend tarafında yapılmaktadır:
 
 ```kotlin
 data class PerformanceEventParams(
-    val lineItemId: String,        
-    val creativeId: String,        
-    val adUnit: String,            
-    val productSku: String,        
-    val payload: String,          
-    val keyword: String? = null,   
-    val userId: String? = null    
+    val lineItemId: String? = null,    // Opsiyonel
+    val creativeId: String? = null,    // Opsiyonel
+    val adUnit: String? = null,        // Opsiyonel
+    val productSku: String? = null,    // Opsiyonel
+    val payload: String? = null,       // Opsiyonel
+    val keyword: String? = null,       // Opsiyonel
+    val userId: String? = null         // Opsiyonel
 )
 ```
 
 ### MimedaSDKErrorCallback
 
-Hata durumlarını yakalamak için interface:
+Hata durumlarını yakalamak için interface. Validasyon backend tarafında yapıldığı için SDK'da validasyon callback'i bulunmaz:
 
 ```kotlin
 interface MimedaSDKErrorCallback {
@@ -451,11 +451,6 @@ interface MimedaSDKErrorCallback {
     fun onPerformanceEventTrackingFailed(
         eventType: PerformanceEventType,
         error: Throwable
-    )
-    
-    fun onValidationFailed(
-        eventName: EventName?,
-        errors: List<String>
     )
 }
 ```
@@ -473,7 +468,7 @@ MimedaSDK.initialize(
             eventParameter: EventParameter,
             error: Throwable
         ) {
-            // Event tracking hatası
+            // Event tracking hatası (network hatası vb.)
             Log.e("MimedaSDK", "Event tracking failed: $eventName/$eventParameter", error)
         }
         
@@ -481,99 +476,12 @@ MimedaSDK.initialize(
             eventType: PerformanceEventType,
             error: Throwable
         ) {
-            // Performance event tracking hatası
+            // Performance event tracking hatası (network hatası vb.)
             Log.e("MimedaSDK", "Performance event failed: $eventType", error)
-        }
-        
-        override fun onValidationFailed(
-            eventName: EventName?,
-            errors: List<String>
-        ) {
-            // Validasyon hatası
-            Log.e("MimedaSDK", "Validation failed: ${errors.joinToString()}")
         }
     }
 )
 ```
-
-## Parametreler
-
-### Event Tracking Parametreleri
-
-Event tracking için gönderilen tüm parametreler aşağıda listelenmiştir. Sistem tarafından otomatik üretilen parametreler ve kullanıcı tarafından sağlanan parametreler ayrı ayrı gösterilmiştir.
-
-#### Sistem Tarafından Otomatik Üretilen Parametreler
-
-Bu parametreler SDK tarafından otomatik olarak oluşturulur ve her event'te gönderilir. Kullanıcının bu parametreleri sağlamasına gerek yoktur.
-
-| API Parametresi | Kotlin/Java Adı | Açıklama | Zorunlu |
-|----------------|-----------------|----------|---------|
-| `v` | `sdkVersion` | SDK versiyonu (örn: "1.0.0") | Evet |
-| `app` | `appName` | Uygulama paket adı (AndroidManifest'ten alınır) | Evet |
-| `t` | `timestamp` | Event'in oluşturulma zamanı (Unix timestamp, milliseconds) | Evet |
-| `d` | `deviceId` | Cihaz ID (Android ID veya UUID) | Evet |
-| `os` | `os` | İşletim sistemi (her zaman "Android") | Evet |
-| `lng` | `language` | Cihaz dili ve ülke kodu (örn: "tr-TR", "en-US") | Evet |
-| `tid` | `traceId` | Her event için benzersiz trace ID (UUID) | Evet |
-| `s` | `sessionId` | Oturum ID (30 dakika geçerlilik süresi, otomatik yenilenir) | Evet |
-| `aid` | `anonymousId` | Anonim kullanıcı ID| Evet |
-
-#### Kullanıcı Tarafından Sağlanan Parametreler (EventParams)
-
-Bu parametreler `EventParams` data class'ı üzerinden kullanıcı tarafından sağlanır. Tümü opsiyoneldir.
-
-| API Parametresi | Kotlin/Java Adı | Açıklama | Zorunlu |
-|----------------|-----------------|----------|---------|
-| `uid` | `userId` | Kullanıcı ID (eğer kullanıcı giriş yaptıysa) | Hayır |
-| `li` | `lineItemIds` | Ürün veya line item ID'leri (virgülle ayrılmış, örn: "item123,item456") | Hayır |
-| `pl` | `productList` | Ürün listesi (format: "SKU:quantity:price" veya özel format) | Hayır |
-| `ct` | `categoryId` | Kategori ID (ürün kategorisi) | Hayır |
-| `kw` | `keyword` | Arama kelimesi (search event'lerinde kullanılır) | Hayır |
-| `lc` | `loyaltyCard` | loyaltyCard numarası | Hayır |
-| `trans` | `transactionId` | İşlem ID (purchase event'lerinde kullanılır) | Hayır |
-| `trc` | `totalRowCount` | Toplam satır sayısı (listing event'lerinde kullanılır) | Hayır |
-| `en` | `eventName` | Event adı | Evet |
-| `ep` | `eventParameter` | Event parametresi | Evet |
-
-### Performance Tracking Parametreleri
-
-Performance tracking için gönderilen tüm parametreler aşağıda listelenmiştir.
-
-#### Sistem Tarafından Otomatik Üretilen Parametreler
-
-Bu parametreler SDK tarafından otomatik olarak oluşturulur ve her performance event'te gönderilir.
-
-| API Parametresi | Kotlin/Java Adı | Açıklama | Zorunlu |
-|----------------|-----------------|----------|---------|
-| `v` | `sdkVersion` | SDK versiyonu (örn: "1.0.0") | Evet |
-| `t` | `timestamp` | Event'in oluşturulma zamanı (Unix timestamp, milliseconds) | Evet |
-| `os` | `os` | İşletim sistemi (her zaman "Android") | Evet |
-| `app` | `appName` | Uygulama paket adı (AndroidManifest'ten alınır) | Evet |
-| `d` | `deviceId` | Cihaz ID (Android ID veya UUID) | Evet |
-| `lng` | `language` | Cihaz dili ve ülke kodu (örn: "tr-TR") | Evet |
-| `tid` | `traceId` | Her event için benzersiz trace ID (UUID) | Evet |
-| `s` | `sessionId` | Oturum ID (30 dakika geçerlilik süresi) | Evet |
-| `aid` | `anonymousId` | Anonim kullanıcı ID (UUID, cihaz bazlı) | Evet |
-
-#### Kullanıcı Tarafından Sağlanan Parametreler (PerformanceEventParams)
-
-Bu parametreler `PerformanceEventParams` data class'ı üzerinden kullanıcı tarafından sağlanır.
-
-| API Parametresi | Kotlin/Java Adı | Açıklama | Zorunlu |
-|----------------|-----------------|----------|---------|
-| `li` | `lineItemId` | Reklam line item ID | Evet |
-| `c` | `creativeId` | Reklam creative ID | Evet |
-| `au` | `adUnit` | Reklamı temsil eder (banner, native, vb.) | Evet |
-| `psku` | `productSku` | Ürün SKU (Stock Keeping Unit) | Evet |
-| `pyl` | `payload` | Özel veri (JSON string veya özel format) | Evet |
-| `kw` | `keyword` | Arama kelimesi (opsiyonel) | Hayır |
-| `uid` | `userId` | Kullanıcı ID (opsiyonel) | Hayır |
-
-**Notlar:**
-- Session ID (`s`): 30 dakika geçerlilik süresi vardır. 30 dakika boyunca kullanıcı etkileşimde bulunmazsa yeni bir session ID oluşturulur.
-- Anonymous ID (`aid`): Cihaz bazlıdır ve güvenli depolamada saklanır. Uygulama silinmedikçe aynı kalır.
-- Device ID (`d`): Android ID kullanılır. Android ID erişilemezse SDK tarafından UUID üretilir.
-- Trace ID (`tid`): Her event için benzersiz bir UUID oluşturulur.
 
 ## Debug Logging
 
@@ -609,7 +517,7 @@ SDK, ProGuard kurallarını otomatik olarak sağlar (`consumer-rules.pro`). Ek b
 SDK, aşağıdaki güvenlik özelliklerini içerir:
 
 - **EncryptedSharedPreferences**: Hassas veriler AES-256-GCM ile şifrelenir
-- **Input Validation**: Tüm kullanıcı girdileri otomatik olarak doğrulanır ve sanitize edilir
+- **Input Sanitization**: Tüm kullanıcı girdileri otomatik olarak temizlenir (XSS, HTML tag, SQL injection koruması). Zorunlu alan validasyonu backend tarafında yapılmaktadır.
 - **Secure Storage**: Session ID ve Anonymous ID güvenli bir şekilde saklanır (userId sdk tarafından üretilmediği için saklanmaz)
 - **ProGuard Obfuscation**: Release build'lerde kod obfuscation aktif
 
@@ -769,3 +677,7 @@ Pipeline üç ana job'dan oluşur:
 ## 📝 Sürüm Geçmişi
 
 Detaylı değişiklik listesi için [CHANGELOG.md](CHANGELOG.md) dosyasına bakın.
+
+## Kaynaklar
+
+- [Confluence](https://e-migros.atlassian.net/wiki/x/AQCK-g) - Süreç ile ilgili hazırlanan dokümantasyon
