@@ -1,12 +1,11 @@
 package com.mimeda.sdk.events
 
 data class PerformanceEventParams(
-    val lineItemId: String,
-    val creativeId: String,
-    val adUnit: String,
-    val productSku: String,
-    val payload: String,
+    val lineItemId: String? = null,
+    val creativeId: String? = null,
+    val adUnit: String? = null,
+    val productSku: String? = null,
+    val payload: String? = null,
     val keyword: String? = null,
     val userId: String? = null
 )
-

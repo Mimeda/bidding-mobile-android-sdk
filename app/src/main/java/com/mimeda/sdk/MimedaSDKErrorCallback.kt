@@ -15,10 +15,4 @@ interface MimedaSDKErrorCallback {
         eventType: PerformanceEventType,
         error: Throwable
     )
-    
-    fun onValidationFailed(
-        eventName: EventName?,
-        errors: List<String>
-    )
 }
-

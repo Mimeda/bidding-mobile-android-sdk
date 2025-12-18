@@ -254,11 +254,6 @@ class MimedaSDKTest {
                 eventType: com.mimeda.sdk.events.PerformanceEventType,
                 error: Throwable
             ) {}
-            
-            override fun onValidationFailed(
-                eventName: EventName?,
-                errors: List<String>
-            ) {}
         }
         
         MimedaSDK.initialize(context, "test-key", Environment.STAGING, callback)
@@ -278,4 +273,3 @@ class MimedaSDKTest {
         assertTrue(MimedaSDK.isInitialized())
     }
 }
-

@@ -39,8 +39,7 @@ class MimedaSDKErrorCallbackTest {
     }
     
     @Test
-    fun testValidationCallbackIsSet() {
-        // Callback'in SDK'ya doğru şekilde atandığını test et
+    fun testCallbackIsSet() {
         val callback = object : MimedaSDKErrorCallback {
             override fun onEventTrackingFailed(
                 eventName: EventName,
@@ -51,11 +50,6 @@ class MimedaSDKErrorCallbackTest {
             override fun onPerformanceEventTrackingFailed(
                 eventType: PerformanceEventType,
                 error: Throwable
-            ) {}
-            
-            override fun onValidationFailed(
-                eventName: EventName?,
-                errors: List<String>
             ) {}
         }
         
@@ -77,11 +71,6 @@ class MimedaSDKErrorCallbackTest {
             override fun onPerformanceEventTrackingFailed(
                 eventType: PerformanceEventType,
                 error: Throwable
-            ) {}
-            
-            override fun onValidationFailed(
-                eventName: EventName?,
-                errors: List<String>
             ) {}
         }
         
@@ -108,15 +97,9 @@ class MimedaSDKErrorCallbackTest {
                 eventType: PerformanceEventType,
                 error: Throwable
             ) {}
-            
-            override fun onValidationFailed(
-                eventName: EventName?,
-                errors: List<String>
-            ) {}
         }
         
         MimedaSDK.initialize(context, "test-key", Environment.STAGING, callback)
         assertTrue(MimedaSDK.isInitialized())
     }
 }
-
