@@ -4,7 +4,6 @@ internal object InputValidator {
     
     private const val MAX_USER_ID_LENGTH = 256
     private const val MAX_STRING_FIELD_LENGTH = 1024
-    private const val MAX_PRODUCT_LIST_LENGTH = 10240
     private const val MAX_KEYWORD_LENGTH = 256
     private const val MAX_PAYLOAD_LENGTH = 65536
     
@@ -52,7 +51,14 @@ internal object InputValidator {
     }
     
     fun sanitizeProductList(productList: String?): String? {
-        return sanitizeString(productList, MAX_PRODUCT_LIST_LENGTH)
+        if (productList.isNullOrBlank()) return productList
+
+        var sanitized = productList
+        sanitized = sanitized.replace(SCRIPT_PATTERN, "")
+        sanitized = sanitized.replace(HTML_TAG_PATTERN, "")
+        sanitized = sanitized.replace("\u0000", "")
+
+        return sanitized.trim()
     }
     
     fun sanitizePayload(payload: String?): String? {
