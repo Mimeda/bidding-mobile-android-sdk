@@ -45,16 +45,16 @@ android {
             dimension = "environment"
             buildConfigField("String", "PRODUCTION_EVENT_BASE_URL", "\"https://event.mlink.com.tr\"")
             buildConfigField("String", "PRODUCTION_PERFORMANCE_BASE_URL", "\"https://performance.mlink.com.tr\"")
-            buildConfigField("String", "STAGING_EVENT_BASE_URL", "\"https://bidding-eventcollector-stage.azurewebsites.net\"")
-            buildConfigField("String", "STAGING_PERFORMANCE_BASE_URL", "\"https://bidding-prfmnccollector-stage.azurewebsites.net\"")
+            buildConfigField("String", "STAGING_EVENT_BASE_URL", "\"https://bidding-eventcollector-stage.mlink.com.tr\"")
+            buildConfigField("String", "STAGING_PERFORMANCE_BASE_URL", "\"https://bidding-prfmnccollector-stage.mlink.com.tr\"")
         }
 
         create("staging") {
             dimension = "environment"
             buildConfigField("String", "PRODUCTION_EVENT_BASE_URL", "\"https://event.mlink.com.tr\"")
             buildConfigField("String", "PRODUCTION_PERFORMANCE_BASE_URL", "\"https://performance.mlink.com.tr\"")
-            buildConfigField("String", "STAGING_EVENT_BASE_URL", "\"https://bidding-eventcollector-stage.azurewebsites.net\"")
-            buildConfigField("String", "STAGING_PERFORMANCE_BASE_URL", "\"https://bidding-prfmnccollector-stage.azurewebsites.net\"")
+            buildConfigField("String", "STAGING_EVENT_BASE_URL", "\"https://bidding-eventcollector-stage.mlink.com.tr\"")
+            buildConfigField("String", "STAGING_PERFORMANCE_BASE_URL", "\"https://bidding-prfmnccollector-stage.mlink.com.tr\"")
         }
     }
 
