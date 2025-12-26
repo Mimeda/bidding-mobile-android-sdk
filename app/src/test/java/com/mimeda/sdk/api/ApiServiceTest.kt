@@ -367,4 +367,60 @@ class ApiServiceTest {
         val productionService = ApiService(client, Environment.PRODUCTION)
         assertNotNull(productionService)
     }
+    
+    @Test
+    fun testEventWithAppParam() {
+        mockServer.enqueue(MockResponse().setResponseCode(200))
+        
+        val params = EventParams(
+            userId = "user-123",
+            app = "custom-app-name"
+        )
+        
+        val result = apiService.trackEvent(
+            EventName.HOME,
+            EventParameter.VIEW,
+            params,
+            EventType.EVENT,
+            "custom-app-name",
+            "test-device",
+            "Android",
+            "tr-TR",
+            "test-session",
+            "test-anonymous"
+        )
+        
+        assertTrue(result)
+        
+        val request = mockServer.takeRequest()
+        val url = request.requestUrl.toString()
+        assertTrue(url.contains("app=custom-app-name"))
+    }
+    
+    @Test
+    fun testPerformanceEventWithAppParam() {
+        mockServer.enqueue(MockResponse().setResponseCode(200))
+        
+        val params = PerformanceEventParams(
+            lineItemId = "6817",
+            app = "custom-app-name"
+        )
+        
+        val result = apiService.trackPerformanceEvent(
+            PerformanceEventType.IMPRESSION,
+            params,
+            "custom-app-name",
+            "test-device",
+            "Android",
+            "tr-TR",
+            "test-session",
+            "test-anonymous"
+        )
+        
+        assertTrue(result)
+        
+        val request = mockServer.takeRequest()
+        val url = request.requestUrl.toString()
+        assertTrue(url.contains("app=custom-app-name"))
+    }
 }

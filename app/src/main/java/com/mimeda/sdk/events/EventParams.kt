@@ -8,6 +8,7 @@ data class EventParams(
     val keyword: String? = null,
     val loyaltyCard: String? = null,
     val transactionId: String? = null,
-    val totalRowCount: Int? = null
+    val totalRowCount: Int? = null,
+    val app: String? = null
 )
 
