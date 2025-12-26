@@ -64,4 +64,8 @@ internal object InputValidator {
     fun sanitizePayload(payload: String?): String? {
         return sanitizeString(payload, MAX_PAYLOAD_LENGTH)
     }
+    
+    fun sanitizeApp(app: String?): String? {
+        return sanitizeString(app, MAX_STRING_FIELD_LENGTH)
+    }
 }

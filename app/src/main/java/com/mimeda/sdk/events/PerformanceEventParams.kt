@@ -7,5 +7,6 @@ data class PerformanceEventParams(
     val productSku: String? = null,
     val payload: String? = null,
     val keyword: String? = null,
-    val userId: String? = null
+    val userId: String? = null,
+    val app: String? = null
 )
