@@ -69,7 +69,8 @@ internal class EventTracker(
             keyword = InputValidator.sanitizeKeyword(params.keyword),
             loyaltyCard = InputValidator.sanitizeString(params.loyaltyCard),
             transactionId = InputValidator.sanitizeString(params.transactionId),
-            totalRowCount = params.totalRowCount
+            totalRowCount = params.totalRowCount,
+            app = InputValidator.sanitizeApp(params.app)
         )
     }
 
@@ -81,7 +82,8 @@ internal class EventTracker(
             productSku = InputValidator.sanitizeString(params.productSku),
             payload = InputValidator.sanitizePayload(params.payload),
             keyword = InputValidator.sanitizeKeyword(params.keyword),
-            userId = InputValidator.sanitizeUserId(params.userId)
+            userId = InputValidator.sanitizeUserId(params.userId),
+            app = InputValidator.sanitizeApp(params.app)
         )
     }
 
@@ -104,7 +106,7 @@ internal class EventTracker(
                         eventParameter = eventParameter,
                         params = sanitizedParams,
                         eventType = eventType,
-                        appName = DeviceInfo.getAppName(),
+                        appName = sanitizedParams.app ?: DeviceInfo.getAppName(),
                         deviceId = DeviceInfo.getDeviceId(),
                         os = DeviceInfo.getOs(),
                         language = DeviceInfo.getLanguage(),
@@ -135,7 +137,7 @@ internal class EventTracker(
                     apiService.trackPerformanceEvent(
                         eventType = eventType,
                         params = sanitizedParams,
-                        appName = DeviceInfo.getAppName(),
+                        appName = sanitizedParams.app ?: DeviceInfo.getAppName(),
                         deviceId = DeviceInfo.getDeviceId(),
                         os = DeviceInfo.getOs(),
                         language = DeviceInfo.getLanguage(),
